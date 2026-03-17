@@ -46,6 +46,7 @@ export class FileService implements OnModuleInit {
   }
 
   async getFileUrl(fileName: string) {
-    return `http://localhost:9000/${this.bucketName}/${fileName}`;
+    const publicUrl = this.configService.get<string>('MINIO_PUBLIC_URL');
+    return `${publicUrl}/${this.bucketName}/${fileName}`;
   }
 }
