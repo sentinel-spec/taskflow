@@ -4,6 +4,7 @@ import { PrismaModule } from '@/prisma/prisma.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { FileModule } from './file/file.module';
+import { WorkspaceModule } from './workspace/workspace.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { FileModule } from './file/file.module';
     UserModule,
     AuthModule,
     FileModule,
+    WorkspaceModule,
   ],
   controllers: [],
   providers: [],
