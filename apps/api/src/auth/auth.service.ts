@@ -6,6 +6,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RedisService } from '@/common/redis/redis.service';
 import { MailService } from '@/mail/mail.service';
+import { SocketGateway } from '@/common/socket/socket.gateway';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { plainToInstance } from 'class-transformer';
@@ -19,6 +20,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
     private readonly mailService: MailService,
+    private readonly socketGateway: SocketGateway,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -26,6 +28,12 @@ export class AuthService {
     
     // Trigger background welcome email
     await this.mailService.sendWelcomeEmail(user.email, user.firstName || '');
+    
+    // Notify all users about new registration (Real-time)
+    this.socketGateway.server.emit('new_user', {
+      firstName: user.firstName,
+      createdAt: user.createdAt,
+    });
     
     return this.generateTokens(user);
   }

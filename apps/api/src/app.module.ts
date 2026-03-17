@@ -14,10 +14,23 @@ import { LoggerModule } from 'nestjs-pino';
 import { APP_GUARD } from '@nestjs/core';
 import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from './common/health/health.controller';
+import { SocketModule } from './common/socket/socket.module';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => ({
+        store: await redisStore({
+          url: `redis://${config.get<string>('REDIS_HOST')}:${config.get<number>('REDIS_PORT')}`,
+          ttl: 600, // 10 minutes default
+        }),
+      }),
+    }),
     TerminusModule,
     LoggerModule.forRoot({
       pinoHttp: {
@@ -42,6 +55,7 @@ import { HealthController } from './common/health/health.controller';
       }),
     }),
     MailModule,
+    SocketModule,
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

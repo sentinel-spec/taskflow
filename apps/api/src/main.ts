@@ -4,9 +4,14 @@ import { AppModule } from '@/app.module';
 import helmet from 'helmet';
 import compression from 'compression';
 import { Logger } from 'nestjs-pino';
+import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
   
   // Use pino logger
   app.useLogger(app.get(Logger));
