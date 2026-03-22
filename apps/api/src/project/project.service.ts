@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -20,6 +21,16 @@ type ProjectWithLogoProps = Project & {
 };
 
 const DEFAULT_ICON_COLOR = '#6d7b8a';
+const PROJECT_CONTEXT_REGEX =
+  /(project|app|application|product|mvp|feature|user|users|mobile|ios|iphone|android|web|service|platform|workflow|dashboard|crm|saas|module|integration|backend|frontend|ui|ux|bug|fix|scroll|modal|roadmap|plan|steps|описани|проект|приложени|продукт|функци|пользоват|мобил|айфон|сервис|платформ|интеграц|мвп|задач|шаг|план|дорожн|интерфейс|баг|фикс|ошибк|прокрут|скролл|модал|верстк|фронтенд|бекенд|тз|задач)/i;
+const BLOCKED_PROMPT_REGEX =
+  /(steal\s+data|steal\s+credentials|credential\s+stuffing|botnet|ransomware|malware|keylogger|phishing|carding|ddos|sql\s*injection\s+attack|xss\s+attack|bypass\s+auth|backdoor|remote\s+code\s+execution|украсть\s+данные|украсть\s+доступ|фишинг|ботнет|шифровальщик|кейлоггер|ддос|обойти\s+аутентификац|сделать\s+бэкдор|внедрить\s+вредонос)/i;
+
+function isMostlyCyrillic(text: string): boolean {
+  const cyrillic = text.match(/[А-Яа-яЁё]/g)?.length ?? 0;
+  const latin = text.match(/[A-Za-z]/g)?.length ?? 0;
+  return cyrillic > latin;
+}
 
 @Injectable()
 export class ProjectService {
@@ -82,8 +93,56 @@ export class ProjectService {
     };
   }
 
+  private sanitizeIdentifier(value: string): string {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 64);
+  }
+
+  private async ensureUniqueIdentifier(
+    workspaceId: number,
+    baseIdentifier: string,
+  ): Promise<string> {
+    const cleanBase = this.sanitizeIdentifier(baseIdentifier);
+    if (!cleanBase) {
+      return this.generateNextProjectIdentifier(workspaceId);
+    }
+
+    let candidate = cleanBase;
+    let suffix = 2;
+
+    while (true) {
+      const existing = await this.prisma.project.findFirst({
+        where: {
+          workspaceId,
+          identifier: candidate,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!existing) {
+        return candidate;
+      }
+
+      candidate = `${cleanBase}-${suffix}`;
+      suffix += 1;
+    }
+  }
+
   async create(workspaceId: number, createProjectDto: CreateProjectDto) {
-    const identifier = await this.generateNextProjectIdentifier(workspaceId);
+    const requestedIdentifier =
+      createProjectDto.identifier || createProjectDto.name;
+    const identifier = await this.ensureUniqueIdentifier(
+      workspaceId,
+      requestedIdentifier,
+    );
 
     const { logo_props, ...payload } = createProjectDto;
     const logoFields = this.buildLogoFields(logo_props);
@@ -137,13 +196,43 @@ export class ProjectService {
       throw new ForbiddenException('You are not a member of this workspace');
     }
 
-    const projectName = payload.projectName?.trim() || 'New Project';
+    const projectName = payload.projectName?.trim() || '';
     const prompt = payload.prompt.trim();
+    const projectContext = projectName
+      ? `Project name context: ${projectName}.`
+      : '';
+    const languageHint = isMostlyCyrillic(`${projectName} ${prompt}`)
+      ? 'User language is Russian. Use only Russian words for all headings and content.'
+      : 'User language is English. Use only English words for all headings and content.';
+    const sectionHint = isMostlyCyrillic(`${projectName} ${prompt}`)
+      ? 'Use Russian section labels like: Обзор, Целевая аудитория, Ключевые функции, Шаги, Ожидаемый результат.'
+      : 'Use English section labels like: Overview, Target users, Key features, Steps, Expected outcome.';
+
+    if (BLOCKED_PROMPT_REGEX.test(prompt)) {
+      throw new BadRequestException(
+        'Запрос отклонен. Разрешены только безопасные запросы, связанные с описанием проекта.',
+      );
+    }
 
     const generatedText = await this.aiService.generateText({
-      prompt: `Project name: ${projectName}\nRequest: ${prompt}`,
+      prompt,
       systemPrompt:
-        'You are an assistant for product teams. Generate a concise, clear project description in plain text. Return only the description text.',
+        `You are a product writing assistant. The user gives a short product idea. Expand it into a practical, detailed project description.
+Strict rules:
+- Reply in the same language as the user input.
+- Do not mix languages in one response.
+- Return only task-oriented output.
+- Use concise task statements and actionable steps.
+- Keep plain text only.
+- 6-10 lines total.
+- If the user asks for steps, include a concise step-by-step plan.
+- Never provide harmful, illegal, or security abuse guidance.
+- Do not use markdown syntax like #, **, or numbered lists.
+${languageHint}
+${sectionHint}
+If user language is Russian, use labels like: 🎯 Задача, ⚙️ Шаги, ✅ Результат.
+If user language is English, use labels like: 🎯 Task, ⚙️ Steps, ✅ Outcome.
+${projectContext}`.trim(),
     });
 
     return { generatedText };

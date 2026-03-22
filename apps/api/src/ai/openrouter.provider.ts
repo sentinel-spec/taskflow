@@ -25,6 +25,8 @@ type OpenRouterChatResponse = {
 @Injectable()
 export class OpenRouterProvider {
   private readonly logger = new Logger(OpenRouterProvider.name);
+  private static readonly FALLBACK_MODEL = 'openrouter/auto';
+  private static readonly REQUEST_TIMEOUT_MS = 10000;
 
   private extractText(content: unknown): string | null {
     if (typeof content === 'string') {
@@ -68,6 +70,25 @@ export class OpenRouterProvider {
     return status === 429 || status >= 500;
   }
 
+  private buildModelCandidates(model: string): string[] {
+    const trimmedModel = model.trim();
+    if (!trimmedModel) {
+      return [OpenRouterProvider.FALLBACK_MODEL];
+    }
+
+    if (trimmedModel === OpenRouterProvider.FALLBACK_MODEL) {
+      return [trimmedModel];
+    }
+
+    // OpenRouter model ids are typically namespaced (provider/model).
+    // If a short non-namespaced model is provided, prefer safe auto-routing first.
+    if (!trimmedModel.includes('/')) {
+      return [OpenRouterProvider.FALLBACK_MODEL, trimmedModel];
+    }
+
+    return [trimmedModel, OpenRouterProvider.FALLBACK_MODEL];
+  }
+
   async generateText({
     apiKey,
     baseUrl,
@@ -77,62 +98,72 @@ export class OpenRouterProvider {
   }: OpenRouterGenerateParams): Promise<string> {
     const startedAt = Date.now();
     const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+    const modelCandidates = this.buildModelCandidates(model);
     const messages = [
       ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
       { role: 'user', content: prompt },
     ];
 
-    const maxAttempts = 2;
+    const maxAttempts = 1;
     let lastError: unknown;
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        const response = await axios.post<OpenRouterChatResponse>(
-          endpoint,
-          {
-            model,
-            messages,
-            temperature: 0.7,
-          },
-          {
-            timeout: 15000,
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
+    for (const candidateModel of modelCandidates) {
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          const response = await axios.post<OpenRouterChatResponse>(
+            endpoint,
+            {
+              model: candidateModel,
+              messages,
+              temperature: 0.7,
             },
-          },
-        );
-
-        const content = response.data.choices?.[0]?.message?.content;
-        const text = this.extractText(content);
-
-        if (!text) {
-          throw new BadGatewayException(
-            'OpenRouter returned an empty generation result',
+            {
+              timeout: OpenRouterProvider.REQUEST_TIMEOUT_MS,
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+            },
           );
-        }
 
-        this.logger.debug(
-          `OpenRouter generation succeeded in ${Date.now() - startedAt}ms`,
-        );
+          const content = response.data.choices?.[0]?.message?.content;
+          const text = this.extractText(content);
 
-        return text.trim();
-      } catch (error) {
-        lastError = error;
+          if (!text) {
+            throw new BadGatewayException(
+              'OpenRouter returned an empty generation result',
+            );
+          }
 
-        if (attempt < maxAttempts && this.isRetryableError(error)) {
-          await new Promise((resolve) => setTimeout(resolve, 350));
-          continue;
-        }
-
-        if (axios.isAxiosError(error)) {
-          const status = error.response?.status;
-          this.logger.warn(
-            `OpenRouter request failed: status=${status ?? 'network'} attempt=${attempt} latency=${Date.now() - startedAt}ms`,
+          this.logger.debug(
+            `OpenRouter generation succeeded in ${Date.now() - startedAt}ms using model=${candidateModel}`,
           );
-        }
 
-        break;
+          return text.trim();
+        } catch (error) {
+          lastError = error;
+
+          if (attempt < maxAttempts && this.isRetryableError(error)) {
+            await new Promise((resolve) => setTimeout(resolve, 350));
+            continue;
+          }
+
+          if (axios.isAxiosError(error)) {
+            const status = error.response?.status;
+            const details =
+              error.response?.data &&
+              typeof error.response.data === 'object' &&
+              'error' in error.response.data
+                ? (error.response.data as { error?: { message?: string } }).error
+                    ?.message
+                : error.message;
+            this.logger.warn(
+              `OpenRouter request failed: model=${candidateModel} status=${status ?? 'network'} attempt=${attempt} latency=${Date.now() - startedAt}ms details=${details ?? 'n/a'}`,
+            );
+          }
+
+          break;
+        }
       }
     }
 

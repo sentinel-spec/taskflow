@@ -18,17 +18,29 @@ export class AiService {
   ) {}
 
   private buildFallbackText(prompt: string): string {
-    const summary = prompt.length > 280 ? `${prompt.slice(0, 280)}...` : prompt;
+    const cleanPrompt = prompt.trim();
+    const summary =
+      cleanPrompt.length > 320
+        ? `${cleanPrompt.slice(0, 320)}...`
+        : cleanPrompt;
+    const isCyrillic = /[А-Яа-яЁё]/.test(cleanPrompt);
+
+    if (isCyrillic) {
+      return [
+        `🚀 Обзор: Проект основан на идее «${summary}» и нацелен на создание удобного и полезного цифрового продукта.`,
+        '🎯 Целевая аудитория: Пользователи, которым нужен простой и быстрый способ решать эту задачу в повседневном сценарии.',
+        '⚙️ Ключевые функции: Базовый MVP с понятной навигацией, основными рабочими действиями и стабильной производительностью.',
+        '🧩 Дополнительно: В следующих итерациях можно добавить аналитику, персонализацию и интеграции со сторонними сервисами.',
+        '📈 Ожидаемый результат: Практичный и масштабируемый продукт с четкими приоритетами и измеримой ценностью для пользователей.',
+      ].join('\n');
+    }
 
     return [
-      'Project description draft',
-      '',
-      `Summary: ${summary}`,
-      '',
-      'Scope:',
-      '- Clarify the core user problem',
-      '- Define MVP goals and priorities',
-      '- Align implementation milestones and ownership',
+      `🚀 Overview: The project is based on the idea "${summary}" and aims to deliver a practical digital product.`,
+      '🎯 Target users: People who need a simple, fast way to solve this problem in a daily workflow.',
+      '⚙️ Key features: MVP scope with clear navigation, essential core actions, and reliable performance.',
+      '🧩 Future improvements: Add analytics, personalization, and integrations to improve retention and product quality.',
+      '📈 Expected outcome: A scalable product with clear delivery priorities and measurable user value.',
     ].join('\n');
   }
 

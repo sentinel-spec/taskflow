@@ -41,11 +41,17 @@ export class LogoPropsDto {
 
 export class CreateProjectDto {
   @IsString()
-  @MaxLength(100)
+  @MaxLength(255)
   name: string;
 
+  @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(64)
+  identifier?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
   description?: string;
 
   @IsOptional()
