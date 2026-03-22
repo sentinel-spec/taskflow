@@ -35,6 +35,7 @@ model User {
   roles      Role[]  @default([USER])
 
   workspaces WorkspaceMember[]
+  projects   ProjectMember[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -48,15 +49,56 @@ model Workspace {
   slug        String           @unique
   description String?
   logoUrl     String?          @map("logo_url")
+  coverImage  String?          @map("cover_image")
   teamSize    String?          @map("team_size")
   useCase     WorkspaceUseCase @default(WORK) @map("use_case")
 
-  members WorkspaceMember[]
+  members  WorkspaceMember[]
+  projects Project[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("workspaces")
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  name        String
+  identifier  String
+  description String?
+  workspaceId Int       @map("workspace_id")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  logoType    String?   @map("logo_type")
+  icon        String?
+  color       String?
+  coverImage  String?   @map("cover_image")
+
+  isPublic   Boolean @default(false) @map("is_public")
+  isArchived Boolean @default(false) @map("is_archived")
+
+  members ProjectMember[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, identifier])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        Int @id @default(autoincrement())
+  userId    Int @map("user_id")
+  projectId Int @map("project_id")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, projectId])
+  @@map("project_members")
 }
 
 model WorkspaceMember {
@@ -73,4 +115,22 @@ model WorkspaceMember {
 
   @@unique([userId, workspaceId])
   @@map("workspace_members")
+}
+
+model SystemSettings {
+  key           String   @id @default("default")
+  timezone      String   @default("UTC")
+  locale        String   @default("en-US")
+  mailEnabled   Boolean  @default(false) @map("mail_enabled")
+  mailFromEmail String   @default("") @map("mail_from_email")
+  mailFromName  String   @default("") @map("mail_from_name")
+  aiEnabled     Boolean  @default(true) @map("ai_enabled")
+  aiProvider    String   @default("openrouter") @map("ai_provider")
+  aiModel       String   @default("openai/gpt-4.1-mini") @map("ai_model")
+  aiBaseUrl     String   @default("https://openrouter.ai/api/v1") @map("ai_base_url")
+  aiApiKey      String?  @map("ai_api_key")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
 }

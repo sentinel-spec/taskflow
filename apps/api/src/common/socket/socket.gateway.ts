@@ -16,17 +16,19 @@ import { Logger } from '@nestjs/common';
     origin: '*',
   },
 })
-export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class SocketGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   private readonly logger = new Logger(SocketGateway.name);
 
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
-  afterInit(server: Server) {
+  afterInit() {
     this.logger.log('WebSocket Gateway initialized');
   }
 
-  handleConnection(client: Socket, ...args: any[]) {
+  handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
   }
 
@@ -35,17 +37,21 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   }
 
   @SubscribeMessage('ping')
-  handlePing(@MessageBody() data: string, @ConnectedSocket() client: Socket) {
+  handlePing() {
     return { event: 'pong', data: 'pong' };
   }
 
   // Method to emit events from other services
+
   sendToUser(userId: string, event: string, data: any) {
     this.server.to(`user_${userId}`).emit(event, data);
   }
 
   @SubscribeMessage('join')
-  handleJoinRoom(@MessageBody() userId: string, @ConnectedSocket() client: Socket) {
+  handleJoinRoom(
+    @MessageBody() userId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
     client.join(`user_${userId}`);
     return { event: 'joined', data: `user_${userId}` };
   }

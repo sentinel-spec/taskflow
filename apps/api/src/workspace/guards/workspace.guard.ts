@@ -8,6 +8,16 @@ import { Reflector } from '@nestjs/core';
 import { PrismaService } from '@/prisma/prisma.service';
 import { WORKSPACE_ROLES_KEY } from '../decorators/workspace-roles.decorator';
 import { WorkspaceRole } from '@prisma/client';
+import { RequestWithUser } from '@/auth/decorators/current-user.decorator';
+
+export interface RequestWithWorkspace extends RequestWithUser {
+  workspace?: any;
+  workspaceMembership?: any;
+  params: {
+    slug?: string;
+    id?: string;
+  };
+}
 
 @Injectable()
 export class WorkspaceGuard implements CanActivate {
@@ -17,7 +27,7 @@ export class WorkspaceGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<RequestWithWorkspace>();
     const user = request.user;
     const params = request.params;
 

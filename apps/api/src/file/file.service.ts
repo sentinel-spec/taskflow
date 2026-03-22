@@ -2,6 +2,13 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 
+export interface UploadedFile {
+  buffer: Buffer;
+  size: number;
+  mimetype: string;
+  originalname: string;
+}
+
 @Injectable()
 export class FileService implements OnModuleInit {
   private minioClient: Minio.Client;
@@ -27,13 +34,15 @@ export class FileService implements OnModuleInit {
         this.logger.log(`Bucket ${this.bucketName} created.`);
       }
     } catch (error) {
-      this.logger.error(`Error connecting to MinIO: ${error.message}`);
+      this.logger.error(
+        `Error connecting to MinIO: ${(error as Error).message}`,
+      );
     }
   }
 
-  async uploadFile(file: any, folder: string = 'avatars') {
+  async uploadFile(file: UploadedFile, folder: string = 'avatars') {
     const fileName = `${folder}/${Date.now()}-${file.originalname}`;
-    
+
     await this.minioClient.putObject(
       this.bucketName,
       fileName,
@@ -45,7 +54,7 @@ export class FileService implements OnModuleInit {
     return fileName;
   }
 
-  async getFileUrl(fileName: string) {
+  getFileUrl(fileName: string) {
     const publicUrl = this.configService.get<string>('MINIO_PUBLIC_URL');
     return `${publicUrl}/${this.bucketName}/${fileName}`;
   }

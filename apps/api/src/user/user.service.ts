@@ -9,6 +9,7 @@ import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { UpdateUserDto } from '@/user/dto/update-user.dto';
 import { FindAllUserDto } from '@/user/dto/find-all-user.dto';
 import { PrismaService } from '@/prisma/prisma.service';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -39,7 +40,11 @@ export class UserService {
     const { page, limit, email, role, isActive, sortBy, sortOrder } = query;
     const skip = (page! - 1) * limit!;
 
-    const where: any = {};
+    const where: {
+      email?: { contains: string; mode: 'insensitive' };
+      roles?: { has: Role };
+      isActive?: boolean;
+    } = {};
     if (email) {
       where.email = { contains: email, mode: 'insensitive' };
     }
@@ -55,7 +60,7 @@ export class UserService {
         where,
         take: limit!,
         skip,
-        orderBy: { [sortBy as any]: sortOrder },
+        orderBy: { [sortBy as string]: sortOrder },
       }),
       this.prisma.user.count({ where }),
     ]);

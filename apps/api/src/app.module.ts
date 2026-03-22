@@ -5,6 +5,7 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { FileModule } from './file/file.module';
 import { WorkspaceModule } from './workspace/workspace.module';
+import { ProjectModule } from './project/project.module';
 import { RedisModule } from './common/redis/redis.module';
 import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module';
@@ -17,6 +18,8 @@ import { HealthController } from './common/health/health.controller';
 import { SocketModule } from './common/socket/socket.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
+import { SystemSettingsModule } from './system-settings/system-settings.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -34,9 +37,10 @@ import { redisStore } from 'cache-manager-redis-yet';
     TerminusModule,
     LoggerModule.forRoot({
       pinoHttp: {
-        transport: process.env.NODE_ENV !== 'production'
-          ? { target: 'pino-pretty', options: { colorize: true } }
-          : undefined,
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? { target: 'pino-pretty', options: { colorize: true } }
+            : undefined,
       },
     }),
     PrismaModule,
@@ -44,6 +48,7 @@ import { redisStore } from 'cache-manager-redis-yet';
     AuthModule,
     FileModule,
     WorkspaceModule,
+    ProjectModule,
     RedisModule,
     BullModule.forRootAsync({
       inject: [ConfigService],
@@ -56,6 +61,8 @@ import { redisStore } from 'cache-manager-redis-yet';
     }),
     MailModule,
     SocketModule,
+    SystemSettingsModule,
+    AiModule,
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

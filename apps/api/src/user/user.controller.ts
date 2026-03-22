@@ -10,7 +10,6 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
   UseGuards,
-  ForbiddenException,
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -24,7 +23,10 @@ import { UserService } from './user.service';
 import { FileService } from '@/file/file.service';
 import { plainToInstance } from 'class-transformer';
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
-import { CurrentUser } from '@/auth/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type UserPayload,
+} from '@/auth/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { RolesGuard } from '@/auth/guards/roles.guard';
@@ -58,7 +60,7 @@ export class UserController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getMe(@CurrentUser() user: any): Promise<UserResponseDto> {
+  async getMe(@CurrentUser() user: UserPayload): Promise<UserResponseDto> {
     const freshUser = await this.userService.findOne(user.id);
     return plainToInstance(UserResponseDto, freshUser);
   }
@@ -66,7 +68,7 @@ export class UserController {
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   async updateMe(
-    @CurrentUser() user: any,
+    @CurrentUser() user: UserPayload,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     const updatedUser = await this.userService.update(user.id, updateUserDto);
@@ -75,14 +77,14 @@ export class UserController {
 
   @Delete('me')
   @UseGuards(JwtAuthGuard)
-  async removeMe(@CurrentUser() user: any) {
+  async removeMe(@CurrentUser() user: UserPayload) {
     return this.userService.remove(user.id);
   }
 
   @Post('me/change-password')
   @UseGuards(JwtAuthGuard)
   async changePassword(
-    @CurrentUser() user: any,
+    @CurrentUser() user: UserPayload,
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
     await this.userService.changePassword(
@@ -97,13 +99,13 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(
-    @CurrentUser() user: any,
+    @CurrentUser() user: UserPayload,
     @UploadedFile() file: Express.Multer.File,
   ) {
     const fileName = await this.fileService.uploadFile(file, 'avatars');
-    const avatarUrl = await this.fileService.getFileUrl(fileName);
+    const avatarUrl = this.fileService.getFileUrl(fileName);
 
-    await this.userService.update(user.id, { avatarUrl } as any);
+    await this.userService.update(user.id, { avatarUrl: avatarUrl });
 
     return { avatarUrl };
   }

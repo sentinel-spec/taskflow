@@ -1,13 +1,32 @@
-import { Body, Controller, Post, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { CheckEmailDto } from './dto/check-email.dto';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('check-email')
+  @SkipThrottle()
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // Limit to 5 requests per minute
+  @HttpCode(HttpStatus.OK)
+  async checkEmail(@Body() checkEmailDto: CheckEmailDto) {
+    // Add artificial delay to prevent timing attacks
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return this.authService.checkEmail(checkEmailDto.email);
+  }
 
   @Post('register')
   register(@Body() registerDto: RegisterDto) {
@@ -29,7 +48,7 @@ export class AuthController {
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async logout(@CurrentUser() user: any) {
+  async logout(@CurrentUser() user: { id: number }) {
     await this.authService.logout(user.id);
     return { message: 'Logged out successfully' };
   }

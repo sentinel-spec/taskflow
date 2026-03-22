@@ -1,4 +1,11 @@
-import { IsString, IsOptional, MaxLength, Matches, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  MaxLength,
+  Matches,
+  IsEnum,
+  IsUrl,
+} from 'class-validator';
 import { WorkspaceUseCase } from '@prisma/client';
 
 export class CreateWorkspaceDto {
@@ -25,4 +32,9 @@ export class CreateWorkspaceDto {
   @IsEnum(WorkspaceUseCase)
   @IsOptional()
   useCase?: WorkspaceUseCase;
+
+  @IsUrl()
+  @IsOptional()
+  @MaxLength(500)
+  coverImage?: string;
 }

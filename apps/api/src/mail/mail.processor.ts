@@ -4,6 +4,16 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
+export interface WelcomeEmailJob {
+  email: string;
+  firstName: string;
+}
+
+export interface RecoveryEmailJob {
+  email: string;
+  token: string;
+}
+
 @Processor('mail_queue')
 export class MailProcessor extends WorkerHost {
   private readonly logger = new Logger(MailProcessor.name);
@@ -22,22 +32,22 @@ export class MailProcessor extends WorkerHost {
     });
   }
 
-  async process(job: Job<any, any, string>): Promise<any> {
+  async process(job: Job<WelcomeEmailJob | RecoveryEmailJob, any, string>) {
     this.logger.log(`Processing job ${job.id} of type ${job.name}`);
 
     switch (job.name) {
       case 'send-welcome':
-        await this.handleWelcomeEmail(job.data);
+        await this.handleWelcomeEmail(job.data as WelcomeEmailJob);
         break;
       case 'send-recovery':
-        await this.handleRecoveryEmail(job.data);
+        await this.handleRecoveryEmail(job.data as RecoveryEmailJob);
         break;
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
     }
   }
 
-  private async handleWelcomeEmail(data: { email: string; firstName: string }) {
+  private async handleWelcomeEmail(data: WelcomeEmailJob) {
     try {
       await this.transporter.sendMail({
         from: this.configService.get<string>('MAIL_FROM'),
@@ -48,12 +58,14 @@ export class MailProcessor extends WorkerHost {
       });
       this.logger.log(`Welcome email sent to ${data.email}`);
     } catch (error) {
-      this.logger.error(`Failed to send welcome email to ${data.email}: ${error.message}`);
+      this.logger.error(
+        `Failed to send welcome email to ${data.email}: ${(error as Error).message}`,
+      );
       throw error;
     }
   }
 
-  private async handleRecoveryEmail(data: { email: string; token: string }) {
+  private async handleRecoveryEmail(data: RecoveryEmailJob) {
     try {
       const frontendUrl = this.configService.get<string>('FRONTEND_URL');
       const recoveryUrl = `${frontendUrl}/auth/reset-password?token=${data.token}`;
@@ -66,7 +78,9 @@ export class MailProcessor extends WorkerHost {
       });
       this.logger.log(`Recovery email sent to ${data.email}`);
     } catch (error) {
-      this.logger.error(`Failed to send recovery email to ${data.email}: ${error.message}`);
+      this.logger.error(
+        `Failed to send recovery email to ${data.email}: ${(error as Error).message}`,
+      );
       throw error;
     }
   }
