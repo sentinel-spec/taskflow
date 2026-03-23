@@ -20,6 +20,7 @@ import {
 import { WorkspaceGuard } from './guards/workspace.guard';
 import { WorkspaceRoles } from './decorators/workspace-roles.decorator';
 import { WorkspaceRole } from '@prisma/client';
+import { InviteWorkspaceMembersDto } from './dto/invite-workspace-members.dto';
 
 @Controller('workspace')
 @UseGuards(JwtAuthGuard)
@@ -48,6 +49,23 @@ export class WorkspaceController {
   @UseGuards(WorkspaceGuard)
   findOne(@Param('slug') slug: string, @CurrentUser() user: UserPayload) {
     return this.workspaceService.findBySlug(slug, user.id);
+  }
+
+  @Get(':slug/members')
+  @UseGuards(WorkspaceGuard)
+  getMembers(@Param('slug') slug: string) {
+    return this.workspaceService.listMembersBySlug(slug);
+  }
+
+  @Post(':slug/invitations')
+  @UseGuards(WorkspaceGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER)
+  inviteMembers(
+    @Param('slug') slug: string,
+    @CurrentUser() user: UserPayload,
+    @Body() body: InviteWorkspaceMembersDto,
+  ) {
+    return this.workspaceService.inviteMembersToWorkspace(slug, user, body);
   }
 
   @Get(':id/projects/next-identifier')

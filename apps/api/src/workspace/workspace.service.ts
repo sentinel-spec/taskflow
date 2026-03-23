@@ -1,11 +1,17 @@
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Project, WorkspaceRole } from '@prisma/client';
+import { Project, type WorkspaceInvitation, WorkspaceRole } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+import type { UserPayload } from '@/auth/decorators/current-user.decorator';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { InviteWorkspaceMembersDto } from './dto/invite-workspace-members.dto';
+import { JoinWorkspaceInvitationDto } from './dto/join-workspace-invitation.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 
 type LogoProps = {
@@ -47,6 +53,332 @@ function attachLogoProps(project: Project) {
 @Injectable()
 export class WorkspaceService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private serializeInvitation(invitation: WorkspaceInvitation & { workspace: { id: number; name: string; slug: string; logoUrl: string | null } }) {
+    return {
+      id: invitation.id,
+      email: invitation.email,
+      role: invitation.role,
+      token: invitation.token,
+      accepted: invitation.accepted,
+      responded_at: invitation.respondedAt,
+      workspace: {
+        id: invitation.workspace.id,
+        name: invitation.workspace.name,
+        slug: invitation.workspace.slug,
+        logo_url: invitation.workspace.logoUrl,
+      },
+    };
+  }
+
+  async userWorkspaceInvitations(userEmail: string) {
+    const invitations = await this.prisma.workspaceInvitation.findMany({
+      where: {
+        email: userEmail,
+        respondedAt: null,
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return invitations.map((invitation) => this.serializeInvitation(invitation));
+  }
+
+  async listMembersBySlug(workspaceSlug: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { slug: workspaceSlug },
+      select: { id: true },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const members = await this.prisma.workspaceMember.findMany({
+      where: {
+        workspaceId: workspace.id,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return members.map((member) => ({
+      id: member.id,
+      role: member.role,
+      createdAt: member.createdAt,
+      updatedAt: member.updatedAt,
+      user: member.user,
+    }));
+  }
+
+  async inviteMembersToWorkspace(
+    workspaceSlug: string,
+    user: UserPayload,
+    dto: InviteWorkspaceMembersDto,
+  ) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { slug: workspaceSlug },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+      },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const uniqueEmails = Array.from(
+      new Set(dto.emails.map((email) => email.trim().toLowerCase()).filter(Boolean)),
+    );
+    const role = dto.role ?? WorkspaceRole.MEMBER;
+
+    const createdInvitations: Array<{
+      id: string;
+      email: string;
+      role: WorkspaceRole;
+      token: string | null;
+    }> = [];
+
+    for (const email of uniqueEmails) {
+      const invitation = await this.prisma.workspaceInvitation.upsert({
+        where: {
+          workspaceId_email: {
+            workspaceId: workspace.id,
+            email,
+          },
+        },
+        update: {
+          role,
+          token: randomUUID(),
+          accepted: false,
+          respondedAt: null,
+        },
+        create: {
+          workspaceId: workspace.id,
+          email,
+          role,
+          token: randomUUID(),
+          accepted: false,
+        },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          token: true,
+        },
+      });
+
+      createdInvitations.push(invitation);
+    }
+
+    return {
+      invitedBy: user.email,
+      workspace: {
+        id: workspace.id,
+        slug: workspace.slug,
+        name: workspace.name,
+      },
+      invitations: createdInvitations.map((invitation) => ({
+        ...invitation,
+        invitationUrl: `/workspace-invitations/?invitation_id=${invitation.id}&slug=${workspace.slug}&token=${invitation.token}`,
+      })),
+    };
+  }
+
+  async getWorkspaceInvitation(workspaceSlug: string, invitationId: string) {
+    const invitation = await this.prisma.workspaceInvitation.findFirst({
+      where: {
+        id: invitationId,
+        workspace: {
+          slug: workspaceSlug,
+        },
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    return this.serializeInvitation(invitation);
+  }
+
+  async joinWorkspaceInvitation(
+    workspaceSlug: string,
+    invitationId: string,
+    body: JoinWorkspaceInvitationDto,
+  ) {
+    const invitation = await this.prisma.workspaceInvitation.findFirst({
+      where: {
+        id: invitationId,
+        workspace: {
+          slug: workspaceSlug,
+        },
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    if (invitation.respondedAt) {
+      return this.serializeInvitation(invitation);
+    }
+
+    const hasToken = Boolean(body.token);
+    if (!hasToken || invitation.token !== body.token) {
+      throw new ForbiddenException('Invalid invitation token');
+    }
+
+    if (body.accepted) {
+      const invitee = await this.prisma.user.findUnique({
+        where: {
+          email: invitation.email,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!invitee) {
+        throw new BadRequestException(
+          'Please create an account with invited email before accepting',
+        );
+      }
+
+      await this.prisma.workspaceMember.upsert({
+        where: {
+          userId_workspaceId: {
+            userId: invitee.id,
+            workspaceId: invitation.workspaceId,
+          },
+        },
+        update: {
+          role: invitation.role,
+        },
+        create: {
+          userId: invitee.id,
+          workspaceId: invitation.workspaceId,
+          role: invitation.role,
+        },
+      });
+    }
+
+    const updated = await this.prisma.workspaceInvitation.update({
+      where: { id: invitation.id },
+      data: {
+        accepted: body.accepted,
+        respondedAt: new Date(),
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+          },
+        },
+      },
+    });
+
+    return this.serializeInvitation(updated);
+  }
+
+  async joinWorkspaces(user: UserPayload, invitationIds: string[]) {
+    const invitations = await this.prisma.workspaceInvitation.findMany({
+      where: {
+        id: {
+          in: invitationIds,
+        },
+        email: user.email,
+        respondedAt: null,
+      },
+    });
+
+    if (invitations.length === 0) {
+      return { joined: 0 };
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const invitation of invitations) {
+        await tx.workspaceMember.upsert({
+          where: {
+            userId_workspaceId: {
+              userId: user.id,
+              workspaceId: invitation.workspaceId,
+            },
+          },
+          update: {
+            role: invitation.role,
+          },
+          create: {
+            userId: user.id,
+            workspaceId: invitation.workspaceId,
+            role: invitation.role,
+          },
+        });
+      }
+
+      await tx.workspaceInvitation.updateMany({
+        where: {
+          id: {
+            in: invitations.map((invitation) => invitation.id),
+          },
+        },
+        data: {
+          accepted: true,
+          respondedAt: new Date(),
+        },
+      });
+    });
+
+    return { joined: invitations.length };
+  }
 
   async checkSlug(slug: string) {
     const workspace = await this.prisma.workspace.findUnique({

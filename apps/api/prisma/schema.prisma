@@ -54,12 +54,30 @@ model Workspace {
   useCase     WorkspaceUseCase @default(WORK) @map("use_case")
 
   members  WorkspaceMember[]
+  invitations WorkspaceInvitation[]
   projects Project[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("workspaces")
+}
+
+model WorkspaceInvitation {
+  id          String        @id @default(cuid())
+  workspaceId Int           @map("workspace_id")
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  email       String
+  role        WorkspaceRole @default(MEMBER)
+  token       String?
+  accepted    Boolean       @default(false)
+  respondedAt DateTime?     @map("responded_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, email])
+  @@map("workspace_invitations")
 }
 
 model Project {
