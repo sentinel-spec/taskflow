@@ -51,7 +51,9 @@ export class RedisService implements OnModuleDestroy {
         await this.client.set(key, value);
       }
     } catch (error) {
-      this.logger.error(`Failed to set Redis key ${key}: ${(error as Error).message}`);
+      this.logger.error(
+        `Failed to set Redis key ${key}: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -63,7 +65,9 @@ export class RedisService implements OnModuleDestroy {
     try {
       return this.client.get(key);
     } catch (error) {
-      this.logger.error(`Failed to get Redis key ${key}: ${(error as Error).message}`);
+      this.logger.error(
+        `Failed to get Redis key ${key}: ${(error as Error).message}`,
+      );
       return null;
     }
   }
@@ -76,7 +80,9 @@ export class RedisService implements OnModuleDestroy {
     try {
       await this.client.del(key);
     } catch (error) {
-      this.logger.error(`Failed to delete Redis key ${key}: ${(error as Error).message}`);
+      this.logger.error(
+        `Failed to delete Redis key ${key}: ${(error as Error).message}`,
+      );
     }
   }
 

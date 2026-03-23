@@ -55,6 +55,11 @@ export class CreateProjectDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  coverImage?: string;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => LogoPropsDto)
   logo_props?: LogoPropsDto;

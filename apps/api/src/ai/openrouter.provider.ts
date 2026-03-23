@@ -154,8 +154,8 @@ export class OpenRouterProvider {
               error.response?.data &&
               typeof error.response.data === 'object' &&
               'error' in error.response.data
-                ? (error.response.data as { error?: { message?: string } }).error
-                    ?.message
+                ? (error.response.data as { error?: { message?: string } })
+                    .error?.message
                 : error.message;
             this.logger.warn(
               `OpenRouter request failed: model=${candidateModel} status=${status ?? 'network'} attempt=${attempt} latency=${Date.now() - startedAt}ms details=${details ?? 'n/a'}`,

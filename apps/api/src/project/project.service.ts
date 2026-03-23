@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Project } from '@prisma/client';
+import { Project, WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto, LogoPropsDto } from './dto/create-project.dto';
 import { GenerateProjectDescriptionDto } from './dto/generate-project-description.dto';
@@ -20,9 +20,22 @@ type ProjectWithLogoProps = Project & {
   logo_props: LogoProps;
 };
 
+type ProjectMemberView = {
+  id: number;
+  userId: number;
+  projectId: number;
+  createdAt: Date;
+  updatedAt: Date;
+  user: {
+    id: number;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  };
+};
+
 const DEFAULT_ICON_COLOR = '#6d7b8a';
-const PROJECT_CONTEXT_REGEX =
-  /(project|app|application|product|mvp|feature|user|users|mobile|ios|iphone|android|web|service|platform|workflow|dashboard|crm|saas|module|integration|backend|frontend|ui|ux|bug|fix|scroll|modal|roadmap|plan|steps|описани|проект|приложени|продукт|функци|пользоват|мобил|айфон|сервис|платформ|интеграц|мвп|задач|шаг|план|дорожн|интерфейс|баг|фикс|ошибк|прокрут|скролл|модал|верстк|фронтенд|бекенд|тз|задач)/i;
 const BLOCKED_PROMPT_REGEX =
   /(steal\s+data|steal\s+credentials|credential\s+stuffing|botnet|ransomware|malware|keylogger|phishing|carding|ddos|sql\s*injection\s+attack|xss\s+attack|bypass\s+auth|backdoor|remote\s+code\s+execution|украсть\s+данные|украсть\s+доступ|фишинг|ботнет|шифровальщик|кейлоггер|ддос|обойти\s+аутентификац|сделать\s+бэкдор|внедрить\s+вредонос)/i;
 
@@ -136,7 +149,25 @@ export class ProjectService {
     }
   }
 
-  async create(workspaceId: number, createProjectDto: CreateProjectDto) {
+  async create(
+    workspaceId: number,
+    createProjectDto: CreateProjectDto,
+    userId: number,
+  ) {
+    const membership = await this.prisma.workspaceMember.findFirst({
+      where: {
+        workspaceId,
+        userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this workspace');
+    }
+
     const requestedIdentifier =
       createProjectDto.identifier || createProjectDto.name;
     const identifier = await this.ensureUniqueIdentifier(
@@ -153,6 +184,11 @@ export class ProjectService {
         workspaceId,
         identifier,
         ...logoFields,
+        members: {
+          create: {
+            userId,
+          },
+        },
       },
     });
 
@@ -171,10 +207,58 @@ export class ProjectService {
   async findOne(id: number) {
     const project = await this.prisma.project.findUnique({
       where: { id },
-      include: { workspace: true },
+      include: {
+        workspace: {
+          include: {
+            members: {
+              where: {
+                role: WorkspaceRole.OWNER,
+              },
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    firstName: true,
+                    lastName: true,
+                    avatarUrl: true,
+                  },
+                },
+              },
+              take: 1,
+            },
+          },
+        },
+        members: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
     });
     if (!project) throw new NotFoundException('Project not found');
-    return this.attachLogoProps(project);
+
+    const members = project.members as ProjectMemberView[];
+    const ownerMember = project.workspace.members[0];
+    const authorUser = members[0]?.user || ownerMember?.user || null;
+
+    return {
+      ...this.attachLogoProps(project),
+      members,
+      membersCount: members.length,
+      author: authorUser,
+    };
   }
 
   async generateDescriptionDraft(

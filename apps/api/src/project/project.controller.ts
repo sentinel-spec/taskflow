@@ -21,10 +21,11 @@ export class ProjectController {
 
   @Post()
   create(
+    @CurrentUser() user: UserPayload,
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Body() createProjectDto: CreateProjectDto,
   ) {
-    return this.projectService.create(workspaceId, createProjectDto);
+    return this.projectService.create(workspaceId, createProjectDto, user.id);
   }
 
   @Get()
