@@ -101,13 +101,13 @@ export const WorkspaceSidebar = observer(function WorkspaceSidebar() {
             </Link>
             <SidebarItem
               icon={Building2}
-              label="General"
+              label={tNav("general")}
               href={`/${normalizedWorkspaceSlug}/settings`}
               isActive={pathname === `/${normalizedWorkspaceSlug}/settings`}
             />
             <SidebarItem
               icon={Users}
-              label="Members"
+              label={tNav("members")}
               href={`/${normalizedWorkspaceSlug}/settings/members`}
               isActive={
                 pathname === `/${normalizedWorkspaceSlug}/settings/members`
@@ -115,7 +115,7 @@ export const WorkspaceSidebar = observer(function WorkspaceSidebar() {
             />
             <SidebarItem
               icon={Cable}
-              label="Integrations"
+              label={tNav("integrations")}
               href={`/${normalizedWorkspaceSlug}/settings/integrations`}
               isActive={
                 pathname === `/${normalizedWorkspaceSlug}/settings/integrations`
@@ -123,7 +123,7 @@ export const WorkspaceSidebar = observer(function WorkspaceSidebar() {
             />
             <SidebarItem
               icon={Webhook}
-              label="Webhooks"
+              label={tNav("webhooks")}
               href={`/${normalizedWorkspaceSlug}/settings/webhooks`}
               isActive={
                 pathname === `/${normalizedWorkspaceSlug}/settings/webhooks`
@@ -131,7 +131,7 @@ export const WorkspaceSidebar = observer(function WorkspaceSidebar() {
             />
             <SidebarItem
               icon={Crown}
-              label="Billing"
+              label={tNav("billing")}
               href={`/${normalizedWorkspaceSlug}/settings/billing`}
               isActive={
                 pathname === `/${normalizedWorkspaceSlug}/settings/billing`

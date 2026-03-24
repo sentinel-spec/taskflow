@@ -21,6 +21,7 @@ import {
   useAuthTranslations,
   useNavigationTranslations,
   useWorkspaceTranslations,
+  useProjectTranslations,
 } from "@/i18n/hooks";
 
 type ProjectDetails = ProjectDto & {
@@ -86,9 +87,10 @@ const ProjectCard = ({
   project: IProject;
   onClick: (project: IProject) => void;
 }) => {
+  const t = useProjectTranslations();
   const membersCount = project.membersCount ?? project.members?.length ?? 0;
   const description =
-    project.description?.trim() || "No description yet for this project.";
+    project.description?.trim() || t("noDescriptionProject");
 
   return (
     <button
@@ -122,7 +124,7 @@ const ProjectCard = ({
             {membersCount}
           </span>
           <span className="inline-flex items-center gap-1 text-txt-accent-primary">
-            Подробнее
+            {t("moreDetails")}
             <ArrowRight size={13} />
           </span>
         </div>
@@ -158,6 +160,7 @@ function ProjectsPage() {
   const tAuth = useAuthTranslations();
   const tNav = useNavigationTranslations();
   const tWorkspace = useWorkspaceTranslations();
+  const tProject = useProjectTranslations();
 
   const filteredProjects = React.useMemo(() => {
     let nextProjects = [...projects];
@@ -213,12 +216,12 @@ function ProjectsPage() {
         )) as ProjectDetails;
         setDetailsCache((prev) => ({ ...prev, [project.id]: details }));
       } catch (_error) {
-        setDetailsError("Не удалось загрузить детали проекта.");
+        setDetailsError(tProject("loadDetailsError"));
       } finally {
         setIsDetailsLoading(false);
       }
     },
-    [detailsCache],
+    [detailsCache, tProject],
   );
 
   const selectedProjectDetails = selectedProject
@@ -256,7 +259,7 @@ function ProjectsPage() {
           </h1>
           <p className="text-sm text-txt-tertiary">
             {filteredProjects.length > 0
-              ? `${filteredProjects.length} of ${projects.length} projects`
+              ? tWorkspace("projectsOf", { count: filteredProjects.length, total: projects.length })
               : tAuth("noProjectsYet")}
           </p>
         </div>
@@ -277,12 +280,12 @@ function ProjectsPage() {
           <p className="text-base font-medium text-txt-primary">
             {projects.length === 0
               ? tAuth("noProjectsYet")
-              : "No projects match filters"}
+              : tWorkspace("noProjectsMatchFilters")}
           </p>
           <p className="mt-2 text-sm text-txt-tertiary">
             {projects.length === 0
-              ? "Create your first project to start organizing work."
-              : "Try changing search or filter values."}
+              ? tWorkspace("createFirstProject")
+              : tWorkspace("tryChangingSearch")}
           </p>
           {projects.length === 0 && (
             <Button

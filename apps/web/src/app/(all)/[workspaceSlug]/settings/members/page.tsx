@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useCommonTranslations, useSettingsTranslations, useWorkspaceTranslations } from "@/i18n/hooks";
 import { setToast, TOAST_TYPE } from "@/core/lib/toast";
 import { workspaceService } from "@/core/services/workspace.service";
 import type {
@@ -20,6 +21,7 @@ import { ChevronDown, Plus, Search, Upload, UserPlus, X } from "lucide-react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useLocale } from "next-intl";
 import useSWR from "swr";
 
 const getFullName = (member: WorkspaceMemberDto) => {
@@ -38,21 +40,6 @@ const getDisplayName = (member: WorkspaceMemberDto) => {
     "member";
   return base.replace(/\s+/g, ".").toLowerCase();
 };
-
-const getJoinedDate = (member: WorkspaceMemberDto) => {
-  const date = new Date(member.createdAt);
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  }).format(date);
-};
-
-const formatRole = (role: WorkspaceMemberDto["role"]) =>
-  role === "OWNER" ? "Owner" : "Member";
 
 type InviteRow = {
   id: string;
@@ -77,6 +64,26 @@ export default observer(function WorkspaceMembersSettingsPage() {
     createInviteRow(),
   ]);
   const [isInviting, setIsInviting] = useState(false);
+  
+  const t = useSettingsTranslations();
+  const tc = useCommonTranslations();
+  const tw = useWorkspaceTranslations();
+  const locale = useLocale();
+
+  const getJoinedDate = (member: WorkspaceMemberDto) => {
+    const date = new Date(member.createdAt);
+    if (Number.isNaN(date.getTime())) {
+      return "—";
+    }
+    return new Intl.DateTimeFormat(locale, {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    }).format(date);
+  };
+
+  const formatRole = (role: WorkspaceMemberDto["role"]) =>
+    role === "OWNER" ? t("owner") : t("member");
 
   const {
     data: members,
@@ -217,7 +224,7 @@ export default observer(function WorkspaceMembersSettingsPage() {
     <div className="overflow-hidden">
       <header className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold text-txt-primary">Участники</h1>
+          <h1 className="text-2xl font-semibold text-txt-primary">{t("members")}</h1>
           <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-bg-surface-3 px-2 py-0.5 text-xs font-semibold text-txt-secondary">
             {filteredMembers.length}
           </span>
@@ -231,7 +238,7 @@ export default observer(function WorkspaceMembersSettingsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search..."
+              placeholder={tc("search")}
               className="h-9 pl-8"
             />
           </div>
@@ -242,13 +249,13 @@ export default observer(function WorkspaceMembersSettingsPage() {
             }
             className="h-9 rounded-md border border-border-subtle bg-bg-surface-1 px-3 text-sm text-txt-primary outline-none transition-all hover:border-border-accent-strong focus:border-border-accent-strong"
           >
-            <option value="ALL">Filters</option>
-            <option value="OWNER">Владелец</option>
-            <option value="MEMBER">Участник</option>
+            <option value="ALL">{tw("filters")}</option>
+            <option value="OWNER">{t("owner")}</option>
+            <option value="MEMBER">{t("member")}</option>
           </select>
           <Button variant="outline" size="lg" className="h-9">
             <Upload size={14} />
-            Import
+            {tc("import")}
           </Button>
           <Button
             size="lg"
@@ -256,7 +263,7 @@ export default observer(function WorkspaceMembersSettingsPage() {
             onClick={() => setIsInviteOpen(true)}
           >
             <UserPlus size={14} />
-            Add member
+            {t("addMember")}
           </Button>
         </div>
       </header>
@@ -268,33 +275,33 @@ export default observer(function WorkspaceMembersSettingsPage() {
               <tr className="text-left text-sm font-medium text-txt-secondary">
                 <th className="px-3 py-3">
                   <div className="flex items-center gap-1">
-                    Full name
+                    {t("fullName")}
                     <ChevronDown size={14} />
                   </div>
                 </th>
                 <th className="px-3 py-3">
                   <div className="flex items-center gap-1">
-                    Display name
+                    {t("displayName")}
                     <ChevronDown size={14} />
                   </div>
                 </th>
                 <th className="px-3 py-3">
                   <div className="flex items-center gap-1">
-                    Email
+                    {tc("email")}
                     <ChevronDown size={14} />
                   </div>
                 </th>
                 <th className="px-3 py-3">
                   <div className="flex items-center gap-1">
-                    Role
+                    {t("role")}
                     <ChevronDown size={14} />
                   </div>
                 </th>
-                <th className="px-3 py-3">Billing Status</th>
-                <th className="px-3 py-3">Authentication</th>
+                <th className="px-3 py-3">{t("billingStatus")}</th>
+                <th className="px-3 py-3">{t("authentication")}</th>
                 <th className="px-3 py-3">
                   <div className="flex items-center gap-1">
-                    Joining date
+                    {t("joiningDate")}
                     <ChevronDown size={14} />
                   </div>
                 </th>
@@ -304,13 +311,13 @@ export default observer(function WorkspaceMembersSettingsPage() {
               {isLoading ? (
                 <tr>
                   <td colSpan={7} className="px-3 py-8 text-txt-secondary">
-                    Loading members...
+                    {t("loadingMembers")}
                   </td>
                 </tr>
               ) : filteredMembers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-3 py-8 text-txt-secondary">
-                    No members found.
+                    {t("noMembersFound")}
                   </td>
                 </tr>
               ) : (
@@ -360,16 +367,16 @@ export default observer(function WorkspaceMembersSettingsPage() {
         }}
       >
         <DialogContent
-          title="Invite members"
+          title={t("inviteMembers")}
           className="sm:max-w-[640px] p-5"
           showCloseButton={false}
         >
           <DialogHeader>
             <DialogTitle className="text-[32px] leading-tight font-semibold text-txt-primary">
-              Invite people to collaborate
+              {t("invitePeopleToCollaborate")}
             </DialogTitle>
             <DialogDescription>
-              Invite people to collaborate on your workspace.
+              {t("inviteDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -395,8 +402,8 @@ export default observer(function WorkspaceMembersSettingsPage() {
                   }
                   className="h-11 min-w-[120px] rounded-md border border-border-subtle bg-bg-surface-1 px-3 text-sm text-txt-primary outline-none transition-all hover:border-border-accent-strong focus:border-border-accent-strong"
                 >
-                  <option value="MEMBER">Member</option>
-                  <option value="OWNER">Owner</option>
+                  <option value="MEMBER">{t("member")}</option>
+                  <option value="OWNER">{t("owner")}</option>
                 </select>
                 <Button
                   type="button"
@@ -420,7 +427,7 @@ export default observer(function WorkspaceMembersSettingsPage() {
             className="mt-2 w-fit px-0 text-primary hover:text-primary/80"
           >
             <Plus size={14} />
-            Add more
+            {t("addMore")}
           </Button>
 
           <div className="mt-2 flex justify-end gap-2">
@@ -430,10 +437,10 @@ export default observer(function WorkspaceMembersSettingsPage() {
               onClick={() => setIsInviteOpen(false)}
               disabled={isInviting}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="button" onClick={handleInvite} disabled={isInviting}>
-              {isInviting ? "Sending..." : "Send invitations"}
+              {isInviting ? t("sending") : t("sendInvitations")}
             </Button>
           </div>
         </DialogContent>

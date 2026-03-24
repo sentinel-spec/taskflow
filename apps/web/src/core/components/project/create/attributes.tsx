@@ -12,6 +12,7 @@ import { ProjectNetworkIcon } from "@/core/components/project/project-network-ic
 import { NETWORK_CHOICES } from "@/core/constants/project";
 import { cn } from "@/core/lib/utils";
 import { useUser } from "@/core/lib/store-context";
+import { useProjectTranslations, useCommonTranslations } from "@/i18n/hooks";
 import type { ProjectFormData } from "./types";
 
 type Props = {
@@ -23,6 +24,9 @@ export function ProjectAttributes({ control }: Props) {
   const userStore = useUser();
   const user = userStore.currentUser;
   const currentUserLeadId = user?.id ? String(user.id) : "me";
+
+  const t = useProjectTranslations();
+  const tc = useCommonTranslations();
 
   const [showNetworkDropdown, setShowNetworkDropdown] = useState(false);
   const [showLeadPopover, setShowLeadPopover] = useState(false);
@@ -52,7 +56,7 @@ export function ProjectAttributes({ control }: Props) {
                       className="h-3.5 w-3.5"
                     />
                   )}
-                  <span>{currentNetwork?.label || "Select visibility"}</span>
+                  <span>{currentNetwork ? t(currentNetwork.key) : t("selectVisibility")}</span>
                   <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
                 </button>
               </PopoverTrigger>
@@ -77,10 +81,10 @@ export function ProjectAttributes({ control }: Props) {
                       />
                       <div>
                         <div className="text-sm font-medium text-txt-primary">
-                          {opt.label}
+                          {t(opt.key)}
                         </div>
                         <div className="text-[11px] text-txt-tertiary">
-                          {opt.description}
+                          {t(`${opt.key}Description`)}
                         </div>
                       </div>
                     </div>
@@ -111,10 +115,10 @@ export function ProjectAttributes({ control }: Props) {
                     <div className="flex h-4 w-4 items-center justify-center rounded bg-custom-primary-100 text-[9px] text-white">
                       {user?.firstName?.[0] || user?.email?.[0] || "U"}
                     </div>
-                    <span>You</span>
+                    <span>{tc("you")}</span>
                   </>
                 ) : (
-                  <span>Lead</span>
+                  <span>{t("lead")}</span>
                 )}
                 <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
               </button>
@@ -133,7 +137,7 @@ export function ProjectAttributes({ control }: Props) {
                     {user?.firstName?.[0] || user?.email?.[0] || "U"}
                   </div>
                   <div className="text-sm font-medium text-txt-primary">
-                    Assign to me
+                    {t("assignToMe")}
                   </div>
                 </div>
                 {value === currentUserLeadId && (
@@ -149,7 +153,7 @@ export function ProjectAttributes({ control }: Props) {
                   }}
                   className="mt-1 flex w-full items-center rounded-md p-2 text-left text-xs text-txt-secondary transition-colors hover:bg-bg-surface-2"
                 >
-                  Clear lead
+                  {t("clearLead")}
                 </button>
               )}
             </PopoverContent>

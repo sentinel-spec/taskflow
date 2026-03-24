@@ -27,6 +27,9 @@ export function AuthPasswordForm({
   onSuccess,
   onBack,
 }: TPasswordForm) {
+  const t = useAuthTranslations();
+  const tc = useCommonTranslations();
+
   const schema = useMemo(
     () =>
       AuthPasswordSchema.superRefine((value, context) => {
@@ -37,11 +40,11 @@ export function AuthPasswordForm({
           context.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["confirm_password"],
-            message: "Passwords do not match",
+            message: t("passwordsDoNotMatch"),
           });
         }
       }),
-    [mode],
+    [mode, t],
   );
 
   const {
@@ -60,8 +63,6 @@ export function AuthPasswordForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const userStore = useUser();
-  const t = useAuthTranslations();
-  const tc = useCommonTranslations();
 
   const onSubmit = async (password: string) => {
     setIsSubmitting(true);
@@ -80,7 +81,7 @@ export function AuthPasswordForm({
         ? backendMessage.join(", ")
         : backendMessage;
       setSubmitError(
-        message || "Ошибка авторизации. Проверь данные и попробуй снова.",
+        message || tc("authError"),
       );
     } finally {
       setIsSubmitting(false);

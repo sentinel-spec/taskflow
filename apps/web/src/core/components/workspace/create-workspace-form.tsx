@@ -192,7 +192,7 @@ export const CreateWorkspaceForm = observer(function CreateWorkspaceForm(
                 <input
                   {...field}
                   id="slug"
-                  placeholder="my-awesome-workspace"
+                  placeholder={t("urlPlaceholder")}
                   className="h-full w-full border-none bg-transparent text-sm text-(--txt-secondary) outline-none placeholder:text-(--txt-placeholder)"
                   onChange={(e) => {
                     const value = e.target.value;

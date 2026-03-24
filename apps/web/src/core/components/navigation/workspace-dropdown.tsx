@@ -105,8 +105,8 @@ export const WorkspaceDropdown = observer(function WorkspaceDropdown() {
                     router.push(`/${workspace.slug}/settings`);
                   }}
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-txt-tertiary transition-colors hover:bg-bg-surface-2 hover:text-txt-primary"
-                  aria-label={`Open ${workspace.name} settings`}
-                  title="Workspace settings"
+                  aria-label={tNav("openWorkspaceSettings", { workspaceName: workspace.name })}
+                  title={tNav("workspaceSettings")}
                 >
                   <Settings size={14} />
                 </button>
@@ -118,8 +118,8 @@ export const WorkspaceDropdown = observer(function WorkspaceDropdown() {
                     router.push(`/${workspace.slug}/settings/members`);
                   }}
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-txt-tertiary transition-colors hover:bg-bg-surface-2 hover:text-txt-primary"
-                  aria-label={`Add members to ${workspace.name}`}
-                  title="Add members"
+                  aria-label={tNav("addMembersToWorkspace", { workspaceName: workspace.name })}
+                  title={tCommon("members")}
                 >
                   <UserPlus size={14} />
                 </button>

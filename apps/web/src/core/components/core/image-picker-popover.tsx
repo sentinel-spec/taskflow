@@ -13,6 +13,7 @@ import {
   getCoverImageDisplayURL,
   STATIC_COVER_IMAGES,
 } from "@/core/helpers/cover-image.helper";
+import { useCommonTranslations } from "@/i18n/hooks";
 
 type Props = {
   label: string | React.ReactNode;
@@ -26,6 +27,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(
   props: Props,
 ) {
   const { label, value, onChange, disabled = false, tabIndex } = props;
+  const t = useCommonTranslations();
 
   const [image, setImage] = useState<File | null>(null);
   const [isImageUploading, setIsImageUploading] = useState(false);
@@ -118,7 +120,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(
                 }`}
                 onClick={() => setActiveTab("images")}
               >
-                Images
+                {t("images")}
               </button>
               <button
                 type="button"
@@ -129,7 +131,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(
                 }`}
                 onClick={() => setActiveTab("upload")}
               >
-                Upload
+                {t("upload")}
               </button>
             </div>
 
@@ -186,11 +188,11 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(
                       <div className="text-center">
                         <p className="text-sm text-gray-600">
                           {isDragActive
-                            ? "Drop image here"
-                            : "Drag & drop image here"}
+                            ? t("dropImageHere")
+                            : t("dragAndDropImageHere")}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          or click to select
+                          {t("orClickToSelect")}
                         </p>
                       </div>
                     )}
@@ -200,13 +202,13 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(
                   {fileRejections.length > 0 && (
                     <p className="text-xs text-red-600">
                       {fileRejections[0].errors[0].code === "file-too-large"
-                        ? "The image size cannot exceed 5 MB."
-                        : "Please upload a valid image file."}
+                        ? t("fileTooLarge")
+                        : t("invalidImageFile")}
                     </p>
                   )}
 
                   <p className="text-xs text-gray-500">
-                    File formats: .jpeg, .jpg, .png, .webp
+                    {t("fileFormats", { formats: ".jpeg, .jpg, .png, .webp" })}
                   </p>
 
                   <div className="flex items-center justify-end gap-2">
@@ -215,7 +217,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(
                       size="sm"
                       onClick={() => setIsOpen(false)}
                     >
-                      Cancel
+                      {t("cancel")}
                     </Button>
                     <Button
                       variant="default"
@@ -223,7 +225,7 @@ export const ImagePickerPopover = observer(function ImagePickerPopover(
                       onClick={handleSubmit}
                       disabled={!image || isImageUploading}
                     >
-                      {isImageUploading ? "Uploading..." : "Upload & Save"}
+                      {isImageUploading ? t("uploading") : t("uploadAndSave")}
                     </Button>
                   </div>
                 </div>

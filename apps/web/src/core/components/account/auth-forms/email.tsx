@@ -46,8 +46,7 @@ export function AuthEmailForm({ onSubmit, initialEmail }: TEmailForm) {
         : backendMessage;
 
       setSubmitError(
-        message ||
-          "Не удалось связаться с сервером. Проверь, что API запущен на порту 8000.",
+        message || tc("serverConnectionError"),
       );
     } finally {
       setIsSubmitting(false);

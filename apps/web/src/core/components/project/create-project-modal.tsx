@@ -6,7 +6,7 @@ import {
   DialogContent,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useNavigationTranslations } from "@/i18n/hooks";
+import { useNavigationTranslations, useProjectTranslations } from "@/i18n/hooks";
 import { CreateProjectForm } from "./create/root";
 
 interface CreateProjectModalProps {
@@ -23,6 +23,7 @@ export const CreateProjectModal = observer(function CreateProjectModal({
   workspaceSlug,
 }: CreateProjectModalProps) {
   const tNav = useNavigationTranslations();
+  const tProject = useProjectTranslations();
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -32,7 +33,7 @@ export const CreateProjectModal = observer(function CreateProjectModal({
         title={tNav("createProject")}
       >
         <DialogDescription className="sr-only">
-          Форма создания нового проекта в текущем workspace.
+          {tProject("createProjectDescription")}
         </DialogDescription>
         <CreateProjectForm
           onClose={onClose}

@@ -2,6 +2,7 @@
 
 import { Calendar, X } from "lucide-react";
 import Link from "next/link";
+import { useLocale } from "next-intl";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ import type {
   ProjectDto,
   ProjectMemberDto,
 } from "@/core/types/dto/project.dto";
+import { useProjectTranslations, useCommonTranslations } from "@/i18n/hooks";
 
 type ProjectForDrawer = ProjectDto & {
   cover_image?: string | null;
@@ -53,17 +55,6 @@ const resolveProjectCover = (project: ProjectForDrawer) => {
   );
 };
 
-const formatDate = (value?: string | null) => {
-  if (!value) return "N/A";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "N/A";
-  return date.toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
 export function ProjectDetailsDrawer({
   workspaceSlug,
   open,
@@ -74,14 +65,29 @@ export function ProjectDetailsDrawer({
   isLoading,
   error,
 }: ProjectDetailsDrawerProps) {
+  const t = useProjectTranslations();
+  const tc = useCommonTranslations();
+  const locale = useLocale();
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return tc("na");
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return tc("na");
+    return date.toLocaleDateString(locale, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   return (
     <Drawer direction="right" open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
         <DrawerHeader>
           <div className="space-y-1">
-            <DrawerTitle>{project?.name ?? "Project details"}</DrawerTitle>
+            <DrawerTitle>{project?.name ?? t("projectDetails")}</DrawerTitle>
             <DrawerDescription>
-              {project?.identifier ?? "Информация о проекте"}
+              {project?.identifier ?? t("projectDetails")}
             </DrawerDescription>
           </div>
           <DrawerClose asChild>
@@ -105,23 +111,22 @@ export function ProjectDetailsDrawer({
 
               <div className="rounded-lg border border-border-subtle bg-bg-surface-2 p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-txt-tertiary">
-                  Description
+                  {t("description")}
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-txt-secondary">
-                  {project.description?.trim() ||
-                    "No description provided yet."}
+                  {project.description?.trim() || t("noDescription")}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-lg border border-border-subtle p-3">
-                  <p className="text-xs text-txt-tertiary">Members</p>
+                  <p className="text-xs text-txt-tertiary">{tc("members")}</p>
                   <p className="mt-1 font-medium text-txt-primary">
                     {membersCount}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border-subtle p-3">
-                  <p className="text-xs text-txt-tertiary">Created</p>
+                  <p className="text-xs text-txt-tertiary">{tc("created")}</p>
                   <p className="mt-1 inline-flex items-center gap-1.5 font-medium text-txt-primary">
                     <Calendar size={13} />
                     {formatDate(project.createdAt)}
@@ -131,7 +136,7 @@ export function ProjectDetailsDrawer({
 
               <div className="rounded-lg border border-border-subtle bg-bg-surface-2 p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-txt-tertiary">
-                  Team
+                  {tc("team")}
                 </p>
                 {members.length > 0 ? (
                   <div className="mt-3 space-y-2">
@@ -163,21 +168,21 @@ export function ProjectDetailsDrawer({
                   </div>
                 ) : (
                   <p className="mt-2 text-sm text-txt-tertiary">
-                    Нет участников в проекте.
+                    {t("noParticipants")}
                   </p>
                 )}
               </div>
 
               {isLoading && (
                 <p className="text-sm text-txt-tertiary">
-                  Загружаем детали проекта...
+                  {t("loadingProjectDetails")}
                 </p>
               )}
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
           ) : (
             <p className="text-sm text-txt-tertiary">
-              Выберите проект, чтобы посмотреть детали.
+              {t("selectProjectToSeeDetails")}
             </p>
           )}
         </div>
@@ -185,7 +190,7 @@ export function ProjectDetailsDrawer({
         <DrawerFooter>
           {project && (
             <Link href={`/${workspaceSlug}/projects/${project.identifier}`}>
-              <Button className="w-full">Перейти в проект</Button>
+              <Button className="w-full">{t("goToProject")}</Button>
             </Link>
           )}
         </DrawerFooter>

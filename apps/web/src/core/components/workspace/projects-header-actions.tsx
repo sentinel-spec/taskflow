@@ -21,6 +21,7 @@ import { usePageHeader } from "@/core/components/workspace/page-header-context";
 import {
   useNavigationTranslations,
   useWorkspaceTranslations,
+  useCommonTranslations,
 } from "@/i18n/hooks";
 
 type ProjectsHeaderActionsProps = {
@@ -43,8 +44,9 @@ export function ProjectsHeaderActions({
   onCreateProject,
 }: ProjectsHeaderActionsProps) {
   const { setRightItems } = usePageHeader();
-  const tWorkspace = useWorkspaceTranslations();
-  const tNav = useNavigationTranslations();
+  const tw = useWorkspaceTranslations();
+  const tn = useNavigationTranslations();
+  const tc = useCommonTranslations();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [filterSearchQuery, setFilterSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -62,18 +64,18 @@ export function ProjectsHeaderActions({
 
   const sortLabel =
     sortBy === "recent"
-      ? "Recently created"
+      ? tw("recentlyCreated")
       : sortBy === "name-asc"
-        ? "Name A-Z"
-        : "Name Z-A";
+        ? tw("nameAZ")
+        : tw("nameZA");
 
   const filterOptions = useMemo(
     () => [
-      { key: "all" as const, label: "All projects" },
-      { key: "public" as const, label: "Public projects" },
-      { key: "private" as const, label: "Private projects" },
+      { key: "all" as const, label: tw("allProjects") },
+      { key: "public" as const, label: tw("publicProjects") },
+      { key: "private" as const, label: tw("privateProjects") },
     ],
-    [],
+    [tw],
   );
 
   const filteredFilterOptions = useMemo(
@@ -96,7 +98,7 @@ export function ProjectsHeaderActions({
               size="sm"
               className="h-8 w-8 p-0"
               onClick={handleOpenSearch}
-              aria-label="Open project search"
+              aria-label={tc("search")}
             >
               <Search size={14} />
             </Button>
@@ -119,14 +121,14 @@ export function ProjectsHeaderActions({
                     }
                   }
                 }}
-                placeholder="Search projects..."
+                placeholder={tw("searchProjects")}
                 className="h-8 w-56 pr-8 pl-8"
               />
               <button
                 type="button"
                 onClick={handleCloseSearch}
                 className="absolute right-2 top-1/2 grid -translate-y-1/2 place-items-center text-txt-placeholder hover:text-txt-secondary"
-                aria-label="Close project search"
+                aria-label={tc("close")}
               >
                 <X size={12} />
               </button>
@@ -147,7 +149,7 @@ export function ProjectsHeaderActions({
                 onClick={() => onSortByChange("recent")}
                 className="flex h-8 w-full items-center justify-between rounded-md px-2 text-sm text-txt-primary hover:bg-bg-surface-2"
               >
-                <span>Recently created</span>
+                <span>{tw("recentlyCreated")}</span>
                 {sortBy === "recent" && <Check size={14} />}
               </button>
               <button
@@ -155,7 +157,7 @@ export function ProjectsHeaderActions({
                 onClick={() => onSortByChange("name-asc")}
                 className="flex h-8 w-full items-center justify-between rounded-md px-2 text-sm text-txt-primary hover:bg-bg-surface-2"
               >
-                <span>Name A-Z</span>
+                <span>{tw("nameAZ")}</span>
                 {sortBy === "name-asc" && <Check size={14} />}
               </button>
               <button
@@ -163,7 +165,7 @@ export function ProjectsHeaderActions({
                 onClick={() => onSortByChange("name-desc")}
                 className="flex h-8 w-full items-center justify-between rounded-md px-2 text-sm text-txt-primary hover:bg-bg-surface-2"
               >
-                <span>Name Z-A</span>
+                <span>{tw("nameZA")}</span>
                 {sortBy === "name-desc" && <Check size={14} />}
               </button>
             </PopoverContent>
@@ -173,7 +175,7 @@ export function ProjectsHeaderActions({
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 gap-2">
                 <ListFilter size={14} />
-                <span>{tWorkspace("filter")}</span>
+                <span>{tw("filter")}</span>
                 {isFiltersApplied && (
                   <span className="rounded bg-bg-accent-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-txt-accent-primary">
                     1
@@ -191,12 +193,12 @@ export function ProjectsHeaderActions({
                   ref={filterInputRef}
                   value={filterSearchQuery}
                   onChange={(event) => setFilterSearchQuery(event.target.value)}
-                  placeholder="Search filters"
+                  placeholder={tw("filters")}
                   className="h-8 pl-7 text-xs"
                 />
               </div>
               <div className="mb-1 px-1 text-[11px] font-medium text-txt-tertiary">
-                Access
+                {tw("access")}
               </div>
               {filteredFilterOptions.length > 0 ? (
                 filteredFilterOptions.map((option) => (
@@ -212,7 +214,7 @@ export function ProjectsHeaderActions({
                 ))
               ) : (
                 <p className="px-2 py-1 text-xs italic text-txt-tertiary">
-                  No matches found
+                  {tc("noMatchesFound")}
                 </p>
               )}
             </PopoverContent>
@@ -225,7 +227,7 @@ export function ProjectsHeaderActions({
             onClick={onCreateProject}
           >
             <Plus size={14} />
-            <span>{tNav("createProject")}</span>
+            <span>{tn("createProject")}</span>
           </Button>
         </div>
 
@@ -236,7 +238,7 @@ export function ProjectsHeaderActions({
                 variant="outline"
                 size="sm"
                 className="h-8 w-8 p-0 relative"
-                aria-label="Open projects filters"
+                aria-label={tw("filters")}
               >
                 <ListFilter size={14} />
                 {isFiltersApplied && (
@@ -254,21 +256,21 @@ export function ProjectsHeaderActions({
                   <Input
                     value={searchQuery}
                     onChange={(event) => onSearchQueryChange(event.target.value)}
-                    placeholder="Search projects..."
+                    placeholder={tw("searchProjects")}
                     className="h-8 pl-7 text-xs"
                   />
                 </div>
 
                 <div className="rounded-md border border-border-subtle p-1">
                   <div className="mb-1 px-1 text-[11px] font-medium text-txt-tertiary">
-                    Sort
+                    {tw("sort")}
                   </div>
                   <button
                     type="button"
                     onClick={() => onSortByChange("recent")}
                     className="flex h-8 w-full items-center justify-between rounded-md px-2 text-sm text-txt-primary hover:bg-bg-surface-2"
                   >
-                    <span>Recently created</span>
+                    <span>{tw("recentlyCreated")}</span>
                     {sortBy === "recent" && <Check size={14} />}
                   </button>
                   <button
@@ -276,7 +278,7 @@ export function ProjectsHeaderActions({
                     onClick={() => onSortByChange("name-asc")}
                     className="flex h-8 w-full items-center justify-between rounded-md px-2 text-sm text-txt-primary hover:bg-bg-surface-2"
                   >
-                    <span>Name A-Z</span>
+                    <span>{tw("nameAZ")}</span>
                     {sortBy === "name-asc" && <Check size={14} />}
                   </button>
                   <button
@@ -284,14 +286,14 @@ export function ProjectsHeaderActions({
                     onClick={() => onSortByChange("name-desc")}
                     className="flex h-8 w-full items-center justify-between rounded-md px-2 text-sm text-txt-primary hover:bg-bg-surface-2"
                   >
-                    <span>Name Z-A</span>
+                    <span>{tw("nameZA")}</span>
                     {sortBy === "name-desc" && <Check size={14} />}
                   </button>
                 </div>
 
                 <div className="rounded-md border border-border-subtle p-1">
                   <div className="mb-1 px-1 text-[11px] font-medium text-txt-tertiary">
-                    Access
+                    {tw("access")}
                   </div>
                   {filteredFilterOptions.length > 0 ? (
                     filteredFilterOptions.map((option) => (
@@ -307,7 +309,7 @@ export function ProjectsHeaderActions({
                     ))
                   ) : (
                     <p className="px-2 py-1 text-xs italic text-txt-tertiary">
-                      No matches found
+                      {tc("noMatchesFound")}
                     </p>
                   )}
                 </div>
@@ -320,7 +322,7 @@ export function ProjectsHeaderActions({
             size="sm"
             className="h-8 w-8 p-0 bg-bg-accent-primary hover:bg-bg-accent-primary-hover"
             onClick={onCreateProject}
-            aria-label={tNav("createProject")}
+            aria-label={tn("createProject")}
           >
             <Plus size={14} />
           </Button>
@@ -345,8 +347,9 @@ export function ProjectsHeaderActions({
     sortLabel,
     setRightItems,
     sortBy,
-    tNav,
-    tWorkspace,
+    tn,
+    tw,
+    tc,
     visibilityFilter,
     filteredFilterOptions,
   ]);

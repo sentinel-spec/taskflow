@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { logger } from "@/core/lib/logger";
 import { useUser } from "@/core/lib/store-context";
+import { useOnboardingTranslations, useCommonTranslations } from "@/i18n/hooks";
 
 type ProfileSetupFormData = {
   firstName: string;
@@ -11,6 +12,9 @@ type ProfileSetupFormData = {
 };
 
 export function ProfileSetup({ onComplete }: { onComplete: () => void }) {
+  const t = useOnboardingTranslations();
+  const tc = useCommonTranslations();
+  
   const {
     register,
     handleSubmit,
@@ -25,7 +29,6 @@ export function ProfileSetup({ onComplete }: { onComplete: () => void }) {
       await userStore.updateMe({
         firstName: data.firstName,
         lastName: data.lastName,
-        // Assume mapping for role or other fields if needed
       });
       onComplete();
     } catch (error) {
@@ -39,10 +42,10 @@ export function ProfileSetup({ onComplete }: { onComplete: () => void }) {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2 text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-txt-primary">
-          Set up your profile
+          {t("profileTitle")}
         </h1>
         <p className="text-sm text-txt-secondary">
-          Tell us a bit about yourself.
+          {t("profileSubtitle")}
         </p>
       </div>
 
@@ -52,12 +55,12 @@ export function ProfileSetup({ onComplete }: { onComplete: () => void }) {
             htmlFor="firstName"
             className="text-xs font-medium text-txt-tertiary uppercase"
           >
-            First name
+            {t("firstName")}
           </label>
           <input
             id="firstName"
-            {...register("firstName", { required: "Required" })}
-            placeholder="Jane"
+            {...register("firstName", { required: tc("required") })}
+            placeholder={t("firstNamePlaceholder")}
             className="input-base h-10"
           />
           {errors.firstName && (
@@ -72,12 +75,12 @@ export function ProfileSetup({ onComplete }: { onComplete: () => void }) {
             htmlFor="lastName"
             className="text-xs font-medium text-txt-tertiary uppercase"
           >
-            Last name
+            {t("lastName")}
           </label>
           <input
             id="lastName"
             {...register("lastName")}
-            placeholder="Doe"
+            placeholder={t("lastNamePlaceholder")}
             className="input-base h-10"
           />
         </div>
@@ -87,7 +90,7 @@ export function ProfileSetup({ onComplete }: { onComplete: () => void }) {
           disabled={isSubmitting}
           className="btn-primary mt-2 w-full shadow-sm disabled:opacity-50"
         >
-          {isSubmitting ? "Saving..." : "Continue"}
+          {isSubmitting ? tc("saving") : tc("continue")}
         </button>
       </form>
     </div>

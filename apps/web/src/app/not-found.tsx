@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image404 from "@/app/assets/404.svg";
 import { Button } from "@/components/ui/button";
 import { useUser, useWorkspace } from "@/core/lib/store-context";
+import { useCommonTranslations } from "@/i18n/hooks";
 
 const REDIRECT_SECONDS = 8;
 const SYSTEM_ROUTES = new Set([
@@ -34,6 +35,7 @@ export default observer(function NotFoundPage() {
   const workspaceStore = useWorkspace();
   const [secondsLeft, setSecondsLeft] = useState(REDIRECT_SECONDS);
   const hasRedirectedRef = useRef(false);
+  const t = useCommonTranslations();
 
   const requestedSlug = useMemo(
     () => getSlugFromPathname(pathname),
@@ -108,31 +110,27 @@ export default observer(function NotFoundPage() {
 
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-txt-tertiary">
-            Ошибка 404
+            {t("notFoundTitle")}
           </p>
           <h1 className="text-3xl font-semibold text-txt-primary">
-            Страница не найдена
+            {t("notFoundSubtitle")}
           </h1>
           <p className="text-sm leading-relaxed text-txt-secondary">
-            Похоже, ссылка устарела или вы перешли по неверному адресу. Мы
-            автоматически вернем вас в рабочее пространство.
+            {t("notFoundDescription")}
           </p>
         </div>
 
         <div className="mx-auto flex max-w-xs items-center justify-center gap-2 rounded-xl border border-border-subtle bg-white px-4 py-3">
           <TimerReset size={16} className="text-txt-tertiary" />
           <span className="text-sm text-txt-secondary">
-            Переход через{" "}
-            <span className="font-semibold text-txt-primary">
-              {secondsLeft} сек.
-            </span>
+            {t("redirectingIn", { seconds: secondsLeft })}
           </span>
         </div>
 
         <div className="flex flex-col items-center justify-center gap-3">
           <Link href={redirectPath} className="w-full">
             <Button className="w-full" size="lg">
-              <Home size={16} />В воркспейс
+              <Home size={16} />{t("backToWorkspace")}
             </Button>
           </Link>
           <Button
@@ -142,7 +140,7 @@ export default observer(function NotFoundPage() {
             onClick={() => router.back()}
           >
             <ArrowLeft size={16} />
-            Назад
+            {t("back")}
           </Button>
         </div>
       </div>

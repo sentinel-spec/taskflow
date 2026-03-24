@@ -4,6 +4,7 @@ import { Command } from "cmdk";
 import { Command as CommandIcon, Search, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useCommandPaletteTranslations, useNavigationTranslations, useCommonTranslations } from "@/i18n/hooks";
 import { cn } from "@/core/lib/utils";
 
 interface PowerKCommand {
@@ -22,6 +23,10 @@ export function PowerK({ commands = [] }: PowerKProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const t = useCommandPaletteTranslations();
+  const tn = useNavigationTranslations();
+  const tc = useCommonTranslations();
 
   // Toggle command palette with Cmd+K
   useEffect(() => {
@@ -87,7 +92,7 @@ export function PowerK({ commands = [] }: PowerKProps) {
         }}
       >
         <Search size={14} className="shrink-0" />
-        <span className="text-xs flex-1">Search or type a command...</span>
+        <span className="text-xs flex-1">{t("placeholder")}</span>
         <div className="flex items-center gap-1 rounded border border-border-subtle bg-white px-1.5 py-0.5 text-[10px] font-medium text-txt-tertiary">
           <span className="opacity-50">⌘</span>K
         </div>
@@ -97,7 +102,7 @@ export function PowerK({ commands = [] }: PowerKProps) {
       {open && (
         <button
           type="button"
-          aria-label="Close command palette"
+          aria-label={tc("close")}
           className="fixed inset-0 z-40 bg-transparent"
           onClick={() => setOpen(false)}
         />
@@ -118,7 +123,7 @@ export function PowerK({ commands = [] }: PowerKProps) {
               ref={inputRef}
               value={searchTerm}
               onValueChange={setSearchTerm}
-              placeholder="Type a command or search..."
+              placeholder={t("searchOrType")}
               className="flex h-12 w-full bg-transparent py-3 text-sm text-txt-primary outline-none placeholder:text-txt-tertiary"
             />
             {searchTerm && (
@@ -162,20 +167,20 @@ export function PowerK({ commands = [] }: PowerKProps) {
             <Command.Separator className="my-2 h-px bg-border-subtle" />
 
             {/* Navigation */}
-            <Command.Group heading="Navigation">
+            <Command.Group heading={tn("projects")}>
               <Command.Item
                 value="Dashboard"
                 className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-txt-primary data-[selected=true]:bg-bg-surface-2"
               >
                 <LayoutGrid size={16} className="text-txt-tertiary" />
-                <span>Go to Dashboard</span>
+                <span>{tn("goToDashboard")}</span>
               </Command.Item>
               <Command.Item
                 value="Issues"
                 className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-txt-primary data-[selected=true]:bg-bg-surface-2"
               >
                 <CircleDot size={16} className="text-txt-tertiary" />
-                <span>View Issues</span>
+                <span>{tn("viewIssues")}</span>
               </Command.Item>
             </Command.Group>
           </Command.List>
@@ -184,18 +189,18 @@ export function PowerK({ commands = [] }: PowerKProps) {
           <div className="flex items-center justify-between border-t border-border-subtle bg-bg-surface-2 px-3 py-2 text-xs text-txt-tertiary">
             <div className="flex items-center gap-2">
               <CommandIcon size={12} />
-              <span>Press</span>
+              <span>{t("press")}</span>
               <kbd className="rounded border border-border-subtle bg-white px-1.5 py-0.5 text-[10px]">
                 ⌘K
               </kbd>
-              <span>to toggle</span>
+              <span>{t("toToggle")}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span>Press</span>
+              <span>{t("press")}</span>
               <kbd className="rounded border border-border-subtle bg-white px-1.5 py-0.5 text-[10px]">
                 ↵
               </kbd>
-              <span>to select</span>
+              <span>{t("toSelect")}</span>
             </div>
           </div>
         </Command>

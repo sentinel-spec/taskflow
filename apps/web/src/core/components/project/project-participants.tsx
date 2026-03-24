@@ -1,23 +1,14 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { Avatar } from "@/components/ui/avatar";
 import type { ProjectMemberDto } from "@/core/types/dto/project.dto";
+import { useProjectTranslations } from "@/i18n/hooks";
 
 type ProjectParticipantsProps = {
   members: ProjectMemberDto[];
   maxVisible?: number;
   className?: string;
-};
-
-const formatDate = (value?: string) => {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
 };
 
 const formatUserName = (member: ProjectMemberDto) => {
@@ -31,6 +22,20 @@ export function ProjectParticipants({
   maxVisible = 5,
   className,
 }: ProjectParticipantsProps) {
+  const t = useProjectTranslations();
+  const locale = useLocale();
+
+  const formatDate = (value?: string) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  };
+
   if (!members.length) {
     return null;
   }
@@ -60,7 +65,7 @@ export function ProjectParticipants({
                   {member.user.email}
                 </p>
                 <p className="mt-1 text-xs text-txt-tertiary">
-                  В проекте с {formatDate(member.createdAt)}
+                  {t("inProjectSince", { date: formatDate(member.createdAt) })}
                 </p>
               </div>
             </div>
