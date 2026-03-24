@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -63,4 +64,8 @@ export class CreateProjectDto {
   @ValidateNested()
   @Type(() => LogoPropsDto)
   logo_props?: LogoPropsDto;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
 }
