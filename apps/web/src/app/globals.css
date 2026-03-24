@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+@import 'tailwindcss';
+
+@theme {
+	--color-bg-canvas: #f6f5f7;
+	--color-bg-surface-1: #ffffff;
+	--color-bg-surface-2: #f1f2f4;
+
+	--color-txt-primary: #17191c;
+	--color-txt-secondary: #3f444d;
+	--color-txt-tertiary: #5d6675;
+	--color-txt-placeholder: #858e9c;
+
+	--color-bg-accent-primary: #006399;
+	--color-bg-accent-primary-hover: #005080;
+	--color-txt-accent-primary: #006399;
+
+	--color-border-subtle: #e5e7eb;
+	--color-border-strong: #d1d5db;
+	--color-border-accent-strong: #006399;
+
+	--color-bg-danger-primary: #ef4444;
+	--color-bg-success-primary: #10b981;
+
+	--color-bg-danger-primary: #ef4444;
+	--color-bg-success-primary: #10b981;
+
+	--border-subtle: #e5e7eb;
+	--border-strong: #d1d5db;
+	--border-accent-strong: #006399;
+
+	--spacing-safe-top: env(safe-area-inset-top);
+	--spacing-safe-bottom: env(safe-area-inset-bottom);
+	--spacing-safe-left: env(safe-area-inset-left);
+	--spacing-safe-right: env(safe-area-inset-right);
+}
+
+/*
+### 4. Deep Architectural Replay
+- **Design Tokens**: Ported exact semantic hex codes and spacing from Plane's `variables.css` into a Tailwind v4 `@theme` block.
+- **MobX Hierarchy**: Replicated the `CoreRootStore` structure, including `InstanceStore`, `WorkspaceStore`, and `UserStore`.
+- **State Hooks**: Implemented specialized hooks (`useUser`, `useInstance`, `useWorkspace`) for easier state access.
+- **Visual Parity**: Updated all forms and layouts to use semantic utilities (`btn-primary`, `input-base`), ensuring they look and feel exactly like the reference project.
+- **Tailwind v4**: Fully migrated the CSS layer to work with Next.js 15+ and the new Tailwind v4 compilation engine.
+- **Logo Spinner**: Hand-crafted the reference project's signature loading animation.
+*/
+@layer base {
+	body {
+		@apply bg-bg-canvas text-txt-primary font-sans antialiased;
+	}
+}
+
+@utility btn-primary {
+	@apply bg-bg-accent-primary text-white transition-colors rounded-md px-4 py-2 font-medium hover:bg-bg-accent-primary-hover;
+}
+
+@utility btn-secondary {
+	@apply bg-bg-surface-1 text-txt-primary transition-colors rounded-md px-4 py-2 font-medium border border-border-subtle hover:bg-bg-surface-2;
+}
+
+@utility input-base {
+	@apply border-border-subtle bg-bg-surface-1 text-txt-primary placeholder:text-txt-placeholder focus:border-border-accent-strong outline-none rounded-md px-3 py-2 border transition-all;
+}
+
+.material-symbols-rounded {
+	font-family: 'Material Symbols Rounded', sans-serif;
+	font-weight: normal;
+	font-style: normal;
+	font-size: 24px;
+	line-height: 1;
+	letter-spacing: normal;
+	text-transform: none;
+	display: inline-block;
+	white-space: nowrap;
+	word-wrap: normal;
+	direction: ltr;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes slide-in {
+	from {
+		transform: translateX(100%);
+		opacity: 0;
+	}
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
+}
+
+@keyframes slide-out {
+	from {
+		transform: translateX(0);
+		opacity: 1;
+	}
+	to {
+		transform: translateX(100%);
+		opacity: 0;
+	}
+}
+
+.animate-slide-in {
+	animation: slide-in 0.3s ease-out;
+}
+
+.animate-slide-out {
+	animation: slide-out 0.3s ease-out;
+}
