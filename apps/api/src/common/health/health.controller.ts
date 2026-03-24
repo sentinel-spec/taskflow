@@ -5,6 +5,7 @@ import {
   HealthCheck,
   PrismaHealthIndicator,
   MicroserviceHealthIndicator,
+  MemoryHealthIndicator,
 } from '@nestjs/terminus';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Transport } from '@nestjs/microservices';
@@ -17,6 +18,7 @@ export class HealthController {
     private prismaHealth: PrismaHealthIndicator,
     private prismaService: PrismaService,
     private microservice: MicroserviceHealthIndicator,
+    private memory: MemoryHealthIndicator,
   ) {}
 
   @Get()
@@ -32,6 +34,9 @@ export class HealthController {
             port: parseInt(process.env.REDIS_PORT || '6379'),
           },
         }),
+      // Memory check: fail if heap used > 1.5GB or RSS > 2GB
+      () => this.memory.checkHeap('memory_heap', 1536 * 1024 * 1024),
+      () => this.memory.checkRSS('memory_rss', 2048 * 1024 * 1024),
     ]);
   }
 }

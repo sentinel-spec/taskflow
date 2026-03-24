@@ -6,7 +6,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Project, type WorkspaceInvitation, WorkspaceRole } from '@prisma/client';
+import {
+  Project,
+  type WorkspaceInvitation,
+  WorkspaceRole,
+} from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import type { UserPayload } from '@/auth/decorators/current-user.decorator';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
@@ -54,7 +58,16 @@ function attachLogoProps(project: Project) {
 export class WorkspaceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private serializeInvitation(invitation: WorkspaceInvitation & { workspace: { id: number; name: string; slug: string; logoUrl: string | null } }) {
+  private serializeInvitation(
+    invitation: WorkspaceInvitation & {
+      workspace: {
+        id: number;
+        name: string;
+        slug: string;
+        logoUrl: string | null;
+      };
+    },
+  ) {
     return {
       id: invitation.id,
       email: invitation.email,
@@ -92,7 +105,9 @@ export class WorkspaceService {
       },
     });
 
-    return invitations.map((invitation) => this.serializeInvitation(invitation));
+    return invitations.map((invitation) =>
+      this.serializeInvitation(invitation),
+    );
   }
 
   async listMembersBySlug(workspaceSlug: string) {
@@ -153,7 +168,9 @@ export class WorkspaceService {
     }
 
     const uniqueEmails = Array.from(
-      new Set(dto.emails.map((email) => email.trim().toLowerCase()).filter(Boolean)),
+      new Set(
+        dto.emails.map((email) => email.trim().toLowerCase()).filter(Boolean),
+      ),
     );
     const role = dto.role ?? WorkspaceRole.MEMBER;
 

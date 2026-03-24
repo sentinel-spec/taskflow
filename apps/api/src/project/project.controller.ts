@@ -1,53 +1,71 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
+  Controller,
+  Delete,
+  Get,
   Param,
+  Patch,
+  Post,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import { CreateProjectDto } from './dto/create-project.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '@/auth/decorators/current-user.decorator';
-import type { UserPayload } from '@/auth/decorators/current-user.decorator';
 import { GenerateProjectDescriptionDto } from './dto/generate-project-description.dto';
+import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
+import {
+  CurrentUser,
+  type UserPayload,
+} from '@/auth/decorators/current-user.decorator';
 
-@Controller('workspace/:workspaceId/project')
+@Controller('projects')
 @UseGuards(JwtAuthGuard)
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
 
-  @Post()
+  @Post(':workspaceId')
   create(
-    @CurrentUser() user: UserPayload,
-    @Param('workspaceId', ParseIntPipe) workspaceId: number,
+    @Param('workspaceId') workspaceId: string,
     @Body() createProjectDto: CreateProjectDto,
-  ) {
-    return this.projectService.create(workspaceId, createProjectDto, user.id);
-  }
-
-  @Get()
-  findAll(@Param('workspaceId', ParseIntPipe) workspaceId: number) {
-    return this.projectService.findAll(workspaceId);
-  }
-
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.projectService.findOne(id);
-  }
-
-  @Post('description/draft')
-  generateDescriptionDraft(
     @CurrentUser() user: UserPayload,
-    @Param('workspaceId', ParseIntPipe) workspaceId: number,
+  ) {
+    return this.projectService.create(+workspaceId, createProjectDto, user.id);
+  }
+
+  @Get('favorites/all')
+  findFavorites(@CurrentUser() user: UserPayload) {
+    return this.projectService.findFavorites(user.id);
+  }
+
+  @Get(':workspaceId')
+  findAll(@Param('workspaceId') workspaceId: string) {
+    return this.projectService.findAll(+workspaceId);
+  }
+
+  @Get('details/:id')
+  findOne(@Param('id') id: string) {
+    return this.projectService.findOne(+id);
+  }
+
+  @Post(':workspaceId/generate-description')
+  generateDescription(
+    @Param('workspaceId') workspaceId: string,
     @Body() payload: GenerateProjectDescriptionDto,
+    @CurrentUser() user: UserPayload,
   ) {
     return this.projectService.generateDescriptionDraft(
       user.id,
-      workspaceId,
+      +workspaceId,
       payload,
     );
+  }
+
+  @Post(':id/favorite')
+  toggleFavorite(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.projectService.toggleFavorite(+id, user.id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.projectService.remove(+id);
   }
 }

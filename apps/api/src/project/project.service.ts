@@ -4,11 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Project, WorkspaceRole } from '@prisma/client';
+import { Project, WorkspaceRole, StateGroup } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto, LogoPropsDto } from './dto/create-project.dto';
 import { GenerateProjectDescriptionDto } from './dto/generate-project-description.dto';
 import { AiService } from '@/ai/ai.service';
+import { WebhookService, WebhookEvent } from '@/webhook/webhook.service';
 
 type LogoProps = {
   in_use?: 'emoji' | 'icon' | null;
@@ -39,6 +40,54 @@ const DEFAULT_ICON_COLOR = '#6d7b8a';
 const BLOCKED_PROMPT_REGEX =
   /(steal\s+data|steal\s+credentials|credential\s+stuffing|botnet|ransomware|malware|keylogger|phishing|carding|ddos|sql\s*injection\s+attack|xss\s+attack|bypass\s+auth|backdoor|remote\s+code\s+execution|украсть\s+данные|украсть\s+доступ|фишинг|ботнет|шифровальщик|кейлоггер|ддос|обойти\s+аутентификац|сделать\s+бэкдор|внедрить\s+вредонос)/i;
 
+const DEFAULT_STATES = [
+  {
+    name: 'Backlog',
+    color: '#60646C',
+    sequence: 10000,
+    group: StateGroup.BACKLOG,
+    default: true,
+  },
+  {
+    name: 'Todo',
+    color: '#60646C',
+    sequence: 20000,
+    group: StateGroup.UNSTARTED,
+  },
+  {
+    name: 'In Progress',
+    color: '#F59E0B',
+    sequence: 30000,
+    group: StateGroup.STARTED,
+  },
+  {
+    name: 'Done',
+    color: '#46A758',
+    sequence: 40000,
+    group: StateGroup.COMPLETED,
+  },
+  {
+    name: 'Cancelled',
+    color: '#9AA4BC',
+    sequence: 50000,
+    group: StateGroup.CANCELLED,
+  },
+];
+
+const DEFAULT_ESTIMATE = {
+  name: 'Fibonacci',
+  points: [
+    { key: 0, value: '0' },
+    { key: 1, value: '1' },
+    { key: 2, value: '2' },
+    { key: 3, value: '3' },
+    { key: 5, value: '5' },
+    { key: 8, value: '8' },
+    { key: 13, value: '13' },
+    { key: 21, value: '21' },
+  ],
+};
+
 function isMostlyCyrillic(text: string): boolean {
   const cyrillic = text.match(/[А-Яа-яЁё]/g)?.length ?? 0;
   const latin = text.match(/[A-Za-z]/g)?.length ?? 0;
@@ -50,6 +99,7 @@ export class ProjectService {
   constructor(
     private prisma: PrismaService,
     private readonly aiService: AiService,
+    private readonly webhookService: WebhookService,
   ) {}
 
   private buildLogoFields(logoProps?: LogoPropsDto) {
@@ -178,19 +228,50 @@ export class ProjectService {
     const { logo_props, ...payload } = createProjectDto;
     const logoFields = this.buildLogoFields(logo_props);
 
-    const project = await this.prisma.project.create({
-      data: {
-        ...payload,
-        workspaceId,
-        identifier,
-        ...logoFields,
-        members: {
-          create: {
-            userId,
+    const project = await this.prisma.$transaction(async (tx) => {
+      const newProject = await tx.project.create({
+        data: {
+          ...payload,
+          workspaceId,
+          identifier,
+          ...logoFields,
+          members: {
+            create: {
+              userId,
+            },
           },
         },
-      },
+      });
+
+      // Create default states for the new project
+      await tx.state.createMany({
+        data: DEFAULT_STATES.map((state) => ({
+          ...state,
+          projectId: newProject.id,
+          slug: state.name.toLowerCase().replace(/\s+/g, '-'),
+        })),
+      });
+
+      // Create default estimate for the new project
+      await tx.estimate.create({
+        data: {
+          name: DEFAULT_ESTIMATE.name,
+          projectId: newProject.id,
+          points: {
+            create: DEFAULT_ESTIMATE.points,
+          },
+        },
+      });
+
+      return newProject;
     });
+
+    // Trigger Webhook
+    this.webhookService.trigger(
+      workspaceId,
+      WebhookEvent.PROJECT_CREATED,
+      project,
+    );
 
     return this.attachLogoProps(project);
   }
@@ -245,6 +326,11 @@ export class ProjectService {
             },
           },
         },
+        states: {
+          orderBy: {
+            sequence: 'asc',
+          },
+        },
       },
     });
     if (!project) throw new NotFoundException('Project not found');
@@ -258,6 +344,7 @@ export class ProjectService {
       members,
       membersCount: members.length,
       author: authorUser,
+      states: project.states,
     };
   }
 
@@ -350,5 +437,55 @@ ${projectContext}`.trim(),
     const nextNumber = maxNumber + 1;
     const padded = `${nextNumber}`.padStart(5, '0');
     return `${prefix}-${padded}`;
+  }
+
+  async toggleFavorite(projectId: number, userId: number) {
+    const favorite = await this.prisma.projectFavorite.findUnique({
+      where: { userId_projectId: { userId, projectId } },
+    });
+
+    if (favorite) {
+      await this.prisma.projectFavorite.delete({
+        where: { id: favorite.id },
+      });
+      return { favorited: false };
+    } else {
+      await this.prisma.projectFavorite.create({
+        data: { userId, projectId },
+      });
+      return { favorited: true };
+    }
+  }
+
+  async findFavorites(userId: number) {
+    const favorites = await this.prisma.projectFavorite.findMany({
+      where: { userId },
+      include: {
+        project: true,
+      },
+    });
+
+    return favorites.map((f) => this.attachLogoProps(f.project));
+  }
+
+  async remove(id: number) {
+    const project = await this.prisma.project.findUnique({
+      where: { id },
+      select: { workspaceId: true },
+    });
+
+    const deletedProject = await this.prisma.project.delete({
+      where: { id },
+    });
+
+    if (project) {
+      this.webhookService.trigger(
+        project.workspaceId,
+        WebhookEvent.PROJECT_DELETED,
+        deletedProject,
+      );
+    }
+
+    return deletedProject;
   }
 }

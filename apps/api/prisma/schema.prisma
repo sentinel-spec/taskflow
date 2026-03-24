@@ -16,11 +16,50 @@ enum WorkspaceRole {
   MEMBER
 }
 
+enum ProjectRole {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
 enum WorkspaceUseCase {
   WORK
   PERSONAL
   STUDY
   OTHER
+}
+
+enum IssuePriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+  NONE
+}
+
+enum StateGroup {
+  BACKLOG
+  UNSTARTED
+  STARTED
+  COMPLETED
+  CANCELLED
+  TRIAGE
+}
+
+enum ModuleStatus {
+  BACKLOG
+  PLANNED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum IssueRelationType {
+  DUPLICATE
+  RELATES_TO
+  BLOCKED_BY
+  BLOCKS
 }
 
 model User {
@@ -34,8 +73,22 @@ model User {
   avatarUrl  String? @map("avatar_url")
   roles      Role[]  @default([USER])
 
-  workspaces WorkspaceMember[]
-  projects   ProjectMember[]
+  workspaces     WorkspaceMember[]
+  projects       ProjectMember[]
+  createdIssues  Issue[]           @relation("CreatedBy")
+  assignedIssues Issue[]           @relation("Assignee")
+  ownedCycles    Cycle[]           @relation("CycleOwner")
+  ledModules     Module[]          @relation("ModuleLead")
+  activities     IssueActivity[]
+  notifications  Notification[]    @relation("Receiver")
+  sentNotifications Notification[] @relation("TriggeredBy")
+  favoriteProjects ProjectFavorite[]
+  ownedPages     Page[]            @relation("PageOwner")
+  issueDrafts    IssueDraft[]      @relation("DraftCreatedBy")
+  comments       IssueComment[]
+  reactions      IssueReaction[]
+  views          IssueView[]       @relation("ViewOwner")
+  apiTokens      ApiToken[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -53,9 +106,10 @@ model Workspace {
   teamSize    String?          @map("team_size")
   useCase     WorkspaceUseCase @default(WORK) @map("use_case")
 
-  members  WorkspaceMember[]
+  members     WorkspaceMember[]
   invitations WorkspaceInvitation[]
-  projects Project[]
+  projects    Project[]
+  webhooks    Webhook[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -95,7 +149,20 @@ model Project {
   isPublic   Boolean @default(false) @map("is_public")
   isArchived Boolean @default(false) @map("is_archived")
 
-  members ProjectMember[]
+  members       ProjectMember[]
+  states        State[]
+  issues        Issue[]
+  cycles        Cycle[]
+  modules       Module[]
+  estimates     Estimate[]
+  activities    IssueActivity[]
+  notifications Notification[]
+  favoritedBy   ProjectFavorite[]
+  pages         Page[]
+  issueDrafts   IssueDraft[]
+  labels        Label[]
+  views         IssueView[]
+  intakes       Intake[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -104,10 +171,482 @@ model Project {
   @@map("projects")
 }
 
+model ProjectFavorite {
+  id        Int     @id @default(autoincrement())
+  userId    Int     @map("user_id")
+  projectId Int     @map("project_id")
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, projectId])
+  @@map("project_favorites")
+}
+
+model State {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  color       String     @default("#60646C")
+  slug        String
+  sequence    Float      @default(0)
+  group       StateGroup @default(BACKLOG)
+  default     Boolean    @default(false)
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  issues Issue[]
+  drafts IssueDraft[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, name])
+  @@map("states")
+}
+
+model Cycle {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  ownedById Int  @map("owned_by_id")
+  ownedBy   User @relation("CycleOwner", fields: [ownedById], references: [id], onDelete: Cascade)
+
+  issues Issue[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("cycles")
+}
+
+model Module {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String?
+  startDate   DateTime?    @map("start_date")
+  targetDate  DateTime?    @map("target_date")
+  status      ModuleStatus @default(PLANNED)
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  leadId Int?  @map("lead_id")
+  lead   User? @relation("ModuleLead", fields: [leadId], references: [id], onDelete: SetNull)
+
+  issues Issue[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("modules")
+}
+
+model Estimate {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  points EstimatePoint[]
+  issues Issue[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, name])
+  @@map("estimates")
+}
+
+model EstimatePoint {
+  id          Int     @id @default(autoincrement())
+  key         Int     @default(0)
+  value       String
+  description String?
+
+  estimateId Int      @map("estimate_id")
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("estimate_points")
+}
+
+model Label {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  color       String  @default("#60646C")
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  issues Issue[] @relation("IssueLabels")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, name])
+  @@map("labels")
+}
+
+model Issue {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+  priority    IssuePriority @default(NONE)
+  sequenceId  Int           @default(1) @map("sequence_id")
+  sortOrder   Float         @default(0) @map("sort_order")
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  stateId Int   @map("state_id")
+  state   State @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+  assigneeId Int?  @map("assignee_id")
+  assignee   User? @relation("Assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  createdById Int  @map("created_by_id")
+  createdBy   User @relation("CreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+
+  cycleId Int?   @map("cycle_id")
+  cycle   Cycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+
+  moduleId Int?    @map("module_id")
+  module   Module? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+
+  estimateId Int?      @map("estimate_id")
+  estimate   Estimate? @relation(fields: [estimateId], references: [id], onDelete: SetNull)
+
+  labels Label[] @relation("IssueLabels")
+
+  activities    IssueActivity[]
+  notifications Notification[]
+  comments      IssueComment[]
+  attachments   IssueAttachment[]
+  links         IssueLink[]
+  reactions     IssueReaction[]
+  intakeIssues  IntakeIssue[]
+
+  // Self-relations for blocking/duplicates
+  blocking     IssueRelation[] @relation("BlockingIssue")
+  blockedBy    IssueRelation[] @relation("BlockedByIssue")
+
+  startDate DateTime? @map("start_date")
+  dueDate   DateTime? @map("due_date")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, sequenceId])
+  @@map("issues")
+}
+
+model IssueRelation {
+  id   Int               @id @default(autoincrement())
+  type IssueRelationType @default(RELATES_TO)
+
+  issueId Int @map("issue_id")
+  issue   Issue @relation("BlockedByIssue", fields: [issueId], references: [id], onDelete: Cascade)
+
+  relatedIssueId Int @map("related_issue_id")
+  relatedIssue   Issue @relation("BlockingIssue", fields: [relatedIssueId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([issueId, relatedIssueId, type])
+  @@map("issue_relations")
+}
+
+model IssueView {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  filters     Json?
+  query       Json?
+  isPublic    Boolean @default(false) @map("is_public")
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  ownedById Int  @map("owned_by_id")
+  ownedBy   User @relation("ViewOwner", fields: [ownedById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("issue_views")
+}
+
+model Intake {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  isDefault   Boolean @default(false) @map("is_default")
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  issues IntakeIssue[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, name])
+  @@map("intakes")
+}
+
+model IntakeIssue {
+  id     Int @id @default(autoincrement())
+  status Int @default(-2) // -2: Pending, -1: Rejected, 0: Snoozed, 1: Accepted, 2: Duplicate
+
+  intakeId Int    @map("intake_id")
+  intake   Intake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+  
+  issueId  Int    @map("issue_id")
+  issue    Issue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([intakeId, issueId])
+  @@map("intake_issues")
+}
+
+model IssueComment {
+  id               Int     @id @default(autoincrement())
+  commentJson      Json?   @map("comment_json")
+  commentHtml      String? @map("comment_html")
+  commentPlain     String? @map("comment_plain")
+
+  issueId Int   @map("issue_id")
+  issue   Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  actorId Int  @map("actor_id")
+  actor   User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  reactions IssueReaction[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("issue_comments")
+}
+
+model IssueAttachment {
+  id        Int    @id @default(autoincrement())
+  url       String
+  name      String
+  size      Int
+  mimetype  String
+
+  issueId Int   @map("issue_id")
+  issue   Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("issue_attachments")
+}
+
+model IssueLink {
+  id    Int     @id @default(autoincrement())
+  url   String
+  title String?
+
+  issueId Int   @map("issue_id")
+  issue   Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("issue_links")
+}
+
+model IssueReaction {
+  id    Int    @id @default(autoincrement())
+  emoji String
+
+  issueId Int?   @map("issue_id")
+  issue   Issue? @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  commentId Int?          @map("comment_id")
+  comment   IssueComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  actorId Int  @map("actor_id")
+  actor   User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([actorId, issueId, emoji])
+  @@unique([actorId, commentId, emoji])
+  @@map("issue_reactions")
+}
+
+model ApiToken {
+  id          Int       @id @default(autoincrement())
+  label       String
+  description String?
+  token       String    @unique
+  isActive    Boolean   @default(true) @map("is_active")
+  lastUsedAt  DateTime? @map("last_used_at")
+  expiredAt   DateTime? @map("expired_at")
+
+  userId      Int       @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("api_tokens")
+}
+
+model IssueDraft {
+  id          Int           @id @default(autoincrement())
+  name        String?
+  description String?
+  priority    IssuePriority @default(NONE)
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  stateId Int?   @map("state_id")
+  state   State? @relation(fields: [stateId], references: [id], onDelete: SetNull)
+
+  createdById Int  @map("created_by_id")
+  createdBy   User @relation("DraftCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("issue_drafts")
+}
+
+model Page {
+  id               Int     @id @default(autoincrement())
+  name             String
+  descriptionJson  Json?   @map("description_json")
+  descriptionHtml  String? @map("description_html")
+  descriptionPlain String? @map("description_plain")
+
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  ownedById Int  @map("owned_by_id")
+  ownedBy   User @relation("PageOwner", fields: [ownedById], references: [id], onDelete: Cascade)
+
+  parentPageId Int?  @map("parent_page_id")
+  parentPage   Page? @relation("ChildPages", fields: [parentPageId], references: [id], onDelete: Cascade)
+  childPages   Page[] @relation("ChildPages")
+
+  color    String?
+  isLocked Boolean @default(false) @map("is_locked")
+  isPublic Boolean @default(false) @map("is_public")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("pages")
+}
+
+model IssueActivity {
+  id        Int     @id @default(autoincrement())
+  issueId   Int     @map("issue_id")
+  issue     Issue   @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  projectId Int     @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actorId   Int     @map("actor_id")
+  actor     User    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  verb     String  @default("created")
+  field    String?
+  oldValue String? @map("old_value")
+  newValue String? @map("new_value")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("issue_activities")
+}
+
+model Notification {
+  id        Int     @id @default(autoincrement())
+  projectId Int?    @map("project_id")
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issueId   Int?    @map("issue_id")
+  issue     Issue?   @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  receiverId Int  @map("receiver_id")
+  receiver   User @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  triggeredById Int?  @map("triggered_by_id")
+  triggeredBy   User? @relation("TriggeredBy", fields: [triggeredById], references: [id], onDelete: SetNull)
+
+  type    String
+  title   String
+  message String?
+  data    Json?
+
+  readAt    DateTime? @map("read_at")
+  archivedAt DateTime? @map("archived_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notifications")
+}
+
+model Webhook {
+  id          Int       @id @default(autoincrement())
+  url         String
+  secretKey   String    @map("secret_key")
+  isActive    Boolean   @default(true) @map("is_active")
+  
+  sendProjectEvents Boolean @default(true) @map("send_project_events")
+  sendIssueEvents   Boolean @default(true) @map("send_issue_events")
+  sendCycleEvents   Boolean @default(true) @map("send_cycle_events")
+  sendModuleEvents  Boolean @default(true) @map("send_module_events")
+
+  workspaceId Int       @map("workspace_id")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("webhooks")
+}
+
+model WebhookLog {
+  id          Int      @id @default(autoincrement())
+  webhookId   Int      @map("webhook_id")
+  eventType   String   @map("event_type")
+  url         String
+  requestBody Json     @map("request_body")
+  
+  responseStatus Int?    @map("response_status")
+  responseBody   String? @map("response_body")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("webhook_logs")
+}
+
 model ProjectMember {
-  id        Int @id @default(autoincrement())
-  userId    Int @map("user_id")
-  projectId Int @map("project_id")
+  id        Int         @id @default(autoincrement())
+  userId    Int         @map("user_id")
+  projectId Int         @map("project_id")
+  role      ProjectRole @default(MEMBER)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)

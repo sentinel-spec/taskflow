@@ -1,9 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
+import { Readable } from 'stream';
 
 export interface UploadedFile {
-  buffer: Buffer;
+  buffer?: Buffer;
+  stream?: Readable;
   size: number;
   mimetype: string;
   originalname: string;
@@ -42,11 +44,16 @@ export class FileService implements OnModuleInit {
 
   async uploadFile(file: UploadedFile, folder: string = 'avatars') {
     const fileName = `${folder}/${Date.now()}-${file.originalname}`;
+    const data = file.stream || file.buffer;
+
+    if (!data) {
+      throw new Error('File data (buffer or stream) is required');
+    }
 
     await this.minioClient.putObject(
       this.bucketName,
       fileName,
-      file.buffer,
+      data,
       file.size,
       { 'Content-Type': file.mimetype },
     );

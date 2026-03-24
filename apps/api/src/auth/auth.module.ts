@@ -8,11 +8,14 @@ import { AuthController } from './auth.controller';
 import { UserModule } from '@/user/user.module';
 import { MailModule } from '@/mail/mail.module';
 import { JwtStrategy } from './jwt.strategy';
+import { ApiTokenStrategy } from './api-token.strategy';
+import { ApiTokenModule } from '@/api-token/api-token.module';
 
 @Module({
   imports: [
     UserModule,
     MailModule,
+    ApiTokenModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -28,7 +31,7 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, ApiTokenStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

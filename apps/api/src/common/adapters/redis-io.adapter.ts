@@ -6,16 +6,25 @@ import { Server } from 'socket.io';
 
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: ReturnType<typeof createAdapter>;
+  private pubClient: ReturnType<typeof createClient>;
+  private subClient: ReturnType<typeof createClient>;
 
   async connectToRedis(): Promise<void> {
-    const pubClient = createClient({
+    this.pubClient = createClient({
       url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
     });
-    const subClient = pubClient.duplicate();
+    this.subClient = this.pubClient.duplicate();
 
-    await Promise.all([pubClient.connect(), subClient.connect()]);
+    await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
 
-    this.adapterConstructor = createAdapter(pubClient, subClient);
+    this.adapterConstructor = createAdapter(this.pubClient, this.subClient);
+  }
+
+  async close(): Promise<void> {
+    await Promise.all([
+      this.pubClient?.disconnect(),
+      this.subClient?.disconnect(),
+    ]);
   }
 
   /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */

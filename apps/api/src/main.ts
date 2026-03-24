@@ -27,9 +27,20 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
 
+  // Enable shutdown hooks
+  app.enableShutdownHooks();
+
   const port = process.env.PORT ?? 8000;
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
+
+  // Graceful shutdown for Redis adapter
+  process.on('SIGTERM', async () => {
+    await redisIoAdapter.close();
+  });
+  process.on('SIGINT', async () => {
+    await redisIoAdapter.close();
+  });
 }
 
 bootstrap().catch((error) => {
